@@ -1,0 +1,487 @@
+import * as exifr from 'exifr'
+import type { Feature } from './types'
+
+type GeoJsonGeometry =
+  | { type: 'Polygon'; coordinates: number[][][] }
+  | { type: 'MultiPolygon'; coordinates: number[][][][] }
+
+interface PrefectureFeature {
+  geometry: GeoJsonGeometry
+}
+
+let japanCache: { features: PrefectureFeature[] } | null = null
+
+async function loadJapan() {
+  if (!japanCache) {
+    const resp = await fetch('japan.geojson')
+    japanCache = await resp.json() as { features: PrefectureFeature[] }
+  }
+  return japanCache
+}
+
+interface ExifData {
+  latitude?: number
+  longitude?: number
+  DateTimeOriginal?: Date
+}
+
+function parseTiffExif(buf: ArrayBuffer): ExifData {
+  const b = new Uint8Array(buf)
+  if (b.length < 8) return {}
+  const le = b[0] === 0x49 && b[1] === 0x49
+  if (!le && !(b[0] === 0x4D && b[1] === 0x4D)) return {}
+
+  const u16 = (o: number): number =>
+    o + 2 > b.length ? 0 : (le ? b[o] | (b[o+1]<<8) : (b[o]<<8) | b[o+1])
+  const u32 = (o: number): number =>
+    o + 4 > b.length ? 0
+    : le ? (b[o] | (b[o+1]<<8) | (b[o+2]<<16) | (b[o+3]<<24)) >>> 0
+         : ((b[o]<<24) | (b[o+1]<<16) | (b[o+2]<<8) | b[o+3]) >>> 0
+  const rational = (o: number): number => {
+    if (o + 8 > b.length) return 0
+    const d = u32(o + 4)
+    return d ? u32(o) / d : 0
+  }
+
+  const ifd0 = u32(4)
+  if (ifd0 + 2 > b.length) return {}
+  const nTags = u16(ifd0)
+
+  let gpsOff = 0, exifOff = 0
+  for (let i = 0; i < nTags && ifd0 + 2 + (i+1)*12 <= b.length; i++) {
+    const e = ifd0 + 2 + i * 12
+    const tag = u16(e)
+    if (tag === 0x8769) exifOff = u32(e + 8)
+    if (tag === 0x8825) gpsOff = u32(e + 8)
+  }
+
+  const result: ExifData = {}
+
+  if (exifOff && exifOff + 2 <= b.length) {
+    const n = u16(exifOff)
+    for (let i = 0; i < n && exifOff + 2 + (i+1)*12 <= b.length; i++) {
+      const e = exifOff + 2 + i * 12
+      if (u16(e) === 0x9003) {
+        const count = u32(e + 4)
+        const off = count <= 4 ? e + 8 : u32(e + 8)
+        if (off + count <= b.length) {
+          const str = String.fromCharCode(...b.slice(off, off + count)).replace(/\0/g, '').trim()
+          const m = str.match(/(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/)
+          if (m) result.DateTimeOriginal = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6])
+        }
+      }
+    }
+  }
+
+  if (gpsOff && gpsOff + 2 <= b.length) {
+    const n = u16(gpsOff)
+    let latRef = 'N', lonRef = 'E', lat = -1, lon = -1
+    for (let i = 0; i < n && gpsOff + 2 + (i+1)*12 <= b.length; i++) {
+      const e = gpsOff + 2 + i * 12
+      const tag = u16(e)
+      if (tag === 0x0001 && e + 9 <= b.length) latRef = String.fromCharCode(b[e + 8])
+      if (tag === 0x0003 && e + 9 <= b.length) lonRef = String.fromCharCode(b[e + 8])
+      if (tag === 0x0002) { const o = u32(e+8); lat = rational(o) + rational(o+8)/60 + rational(o+16)/3600 }
+      if (tag === 0x0004) { const o = u32(e+8); lon = rational(o) + rational(o+8)/60 + rational(o+16)/3600 }
+    }
+    if (lat >= 0) result.latitude = latRef === 'S' ? -lat : lat
+    if (lon >= 0) result.longitude = lonRef === 'W' ? -lon : lon
+  }
+
+  return result
+}
+
+async function readExif(file: File): Promise<ExifData> {
+  const buf = await file.arrayBuffer()
+
+  // JPEG など: exifr で試みる
+  try {
+    const all = await exifr.parse(buf, true)
+    if (all) {
+      const gps = await exifr.gps(buf).catch(() => null)
+      const r: ExifData = {
+        latitude: gps?.latitude ?? all.latitude,
+        longitude: gps?.longitude ?? all.longitude,
+        DateTimeOriginal: all.DateTimeOriginal,
+      }
+      console.log('[EXIF] exifr OK:', r)
+      return r
+    }
+  } catch { /* fall through */ }
+
+  // HEIC など: TIFF ヘッダーをスキャンして直接パース
+  const scan = new Uint8Array(buf, 0, Math.min(buf.byteLength, 2 * 1024 * 1024))
+  for (let i = 0; i < scan.length - 8; i++) {
+    const isLE = scan[i]===0x49 && scan[i+1]===0x49 && scan[i+2]===0x2A && scan[i+3]===0x00
+    const isBE = scan[i]===0x4D && scan[i+1]===0x4D && scan[i+2]===0x00 && scan[i+3]===0x2A
+    if (isLE || isBE) {
+      const r = parseTiffExif(buf.slice(i))
+      if (r.latitude != null || r.DateTimeOriginal != null) {
+        console.log('[EXIF] manual parse at offset', i, ':', r)
+        return r
+      }
+    }
+  }
+
+  console.warn('[EXIF] no data found')
+  return {}
+}
+
+function formatCoords(lat: number, lon: number): string {
+  const latDir = lat >= 0 ? 'N' : 'S'
+  const lonDir = lon >= 0 ? 'E' : 'W'
+  const latDeg = Math.abs(lat).toFixed(4)
+  const lonDeg = Math.abs(lon).toFixed(4)
+  return `${latDeg}°${latDir}  ${lonDeg}°${lonDir}`
+}
+
+function formatDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${y}/${m}/${day} ${hh}:${mm}`
+}
+
+function buildBounds(features: Feature[]) {
+  const points = features.flatMap(f =>
+    f.type === 'Point' ? [f.coordinates] : f.coordinates
+  )
+  const lons = points.map(p => p[0])
+  const lats = points.map(p => p[1])
+  const padX = (Math.max(...lons) - Math.min(...lons)) * 0.35 + 0.2
+  const padY = (Math.max(...lats) - Math.min(...lats)) * 0.35 + 0.2
+  return {
+    minLon: Math.min(...lons) - padX,
+    maxLon: Math.max(...lons) + padX,
+    minLat: Math.min(...lats) - padY,
+    maxLat: Math.max(...lats) + padY,
+  }
+}
+
+function makeProjector(
+  bounds: ReturnType<typeof buildBounds>,
+  x: number, y: number, w: number, h: number
+) {
+  const centerLat = (bounds.minLat + bounds.maxLat) / 2
+  const cosLat = Math.cos((centerLat * Math.PI) / 180)
+
+  const minPX = bounds.minLon * cosLat
+  const maxPX = bounds.maxLon * cosLat
+  const minPY = -bounds.maxLat
+  const maxPY = -bounds.minLat
+
+  const scaleX = w / (maxPX - minPX)
+  const scaleY = h / (maxPY - minPY)
+  const scale = Math.min(scaleX, scaleY)
+
+  const offX = x + (w - (maxPX - minPX) * scale) / 2
+  const offY = y + (h - (maxPY - minPY) * scale) / 2
+
+  return (lon: number, lat: number): [number, number] => [
+    (lon * cosLat - minPX) * scale + offX,
+    (-lat - minPY) * scale + offY,
+  ]
+}
+
+function drawRing(
+  ctx: CanvasRenderingContext2D,
+  ring: number[][],
+  project: (lon: number, lat: number) => [number, number]
+) {
+  if (ring.length < 2) return
+  const [x0, y0] = project(ring[0][0], ring[0][1])
+  ctx.moveTo(x0, y0)
+  for (let i = 1; i < ring.length; i++) {
+    const [x, y] = project(ring[i][0], ring[i][1])
+    ctx.lineTo(x, y)
+  }
+}
+
+type ImageSource = HTMLImageElement | ImageBitmap
+
+function imageSize(src: ImageSource): { width: number; height: number } {
+  return 'naturalWidth' in src
+    ? { width: src.naturalWidth, height: src.naturalHeight }
+    : { width: src.width, height: src.height }
+}
+
+function tryNativeLoad(file: Blob, mimeType?: string): Promise<HTMLImageElement | null> {
+  return new Promise(resolve => {
+    const blob = mimeType ? new Blob([file], { type: mimeType }) : file
+    const url = URL.createObjectURL(blob)
+    const img = new Image()
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img) }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
+    img.src = url
+  })
+}
+
+function isHeic(file: File): boolean {
+  return (
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    /\.heic$/i.test(file.name) ||
+    /\.heif$/i.test(file.name)
+  )
+}
+
+async function tryImageDecoder(file: File): Promise<ImageBitmap | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ImageDecoder = (window as any).ImageDecoder
+  if (typeof ImageDecoder === 'undefined') {
+    console.warn('[HEIC] ImageDecoder API unavailable')
+    return null
+  }
+  const supported: boolean = await ImageDecoder.isTypeSupported('image/heic')
+  if (!supported) {
+    console.warn('[HEIC] ImageDecoder: image/heic not supported')
+    return null
+  }
+  try {
+    const decoder = new ImageDecoder({ data: file.stream(), type: 'image/heic' })
+    const { image } = await decoder.decode()
+    return await createImageBitmap(image)
+  } catch (e) {
+    console.warn('[HEIC] ImageDecoder failed:', e)
+    return null
+  }
+}
+
+
+async function tryLibheif(file: File): Promise<ImageBitmap | null> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod = await import('libheif-js') as any
+    // asm.js ビルドは同期初期化なので .default をそのまま使う
+    const libheif = mod.default ?? mod
+    const { HeifDecoder } = libheif
+
+    if (typeof HeifDecoder !== 'function') {
+      console.warn('[HEIC] libheif-js: HeifDecoder not a function')
+      return null
+    }
+
+    const buffer = await file.arrayBuffer()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const images: any[] = new HeifDecoder().decode(new Uint8Array(buffer))
+    if (!images?.length) {
+      console.warn('[HEIC] libheif-js: no images decoded')
+      return null
+    }
+
+    const img = images[0]
+    const width: number = img.get_width()
+    const height: number = img.get_height()
+
+    const imageData = await new Promise<ImageData>((resolve, reject) => {
+      img.display(
+        { data: new Uint8ClampedArray(width * height * 4), width, height },
+        (d: { data: Uint8ClampedArray } | null) => {
+          if (!d) { reject(new Error('display failed')); return }
+          resolve(new ImageData(new Uint8ClampedArray(d.data.buffer as ArrayBuffer), width, height))
+        }
+      )
+    })
+
+    return await createImageBitmap(imageData)
+  } catch (e) {
+    console.warn('[HEIC] libheif-js failed:', e)
+    return null
+  }
+}
+
+async function loadImage(file: File): Promise<ImageSource> {
+  const a = await tryNativeLoad(file)
+  if (a) return a
+
+  if (!isHeic(file)) {
+    throw new Error('画像を読み込めませんでした。')
+  }
+
+  const b = await tryNativeLoad(file, 'image/heic')
+  if (b) return b
+
+  const c = await tryImageDecoder(file)
+  if (c) return c
+
+  const d = await tryLibheif(file)
+  if (d) return d
+
+  throw new Error('画像を読み込めませんでした。JPEG または PNG に変換してからお試しください。')
+}
+
+interface TextLine {
+  text: string
+  size: number
+  bold?: boolean
+}
+
+function drawTextOverlay(
+  ctx: CanvasRenderingContext2D,
+  title: string,
+  subtitle: string,
+  exif: ExifData,
+  W: number,
+) {
+  const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif'
+  const baseSize = Math.round(W * 0.022)
+  const PAD = Math.round(baseSize * 0.8)
+  const BOX_PAD = Math.round(baseSize * 0.7)
+  const CORNER = 12
+
+  const lines: TextLine[] = []
+  if (title)    lines.push({ text: title,    size: Math.round(baseSize * 1.4), bold: true })
+  if (subtitle) lines.push({ text: subtitle, size: Math.round(baseSize * 1.0) })
+  if (exif.DateTimeOriginal)
+    lines.push({ text: formatDate(exif.DateTimeOriginal), size: Math.round(baseSize * 0.85) })
+  if (exif.latitude != null && exif.longitude != null)
+    lines.push({ text: formatCoords(exif.latitude, exif.longitude), size: Math.round(baseSize * 0.85) })
+
+  if (lines.length === 0) return
+
+  ctx.save()
+  ctx.textBaseline = 'top'
+
+  // 各行の高さと最大幅を計算
+  const measured = lines.map(l => {
+    ctx.font = `${l.bold ? 'bold ' : ''}${l.size}px ${FONT}`
+    return { ...l, w: ctx.measureText(l.text).width, h: Math.round(l.size * 1.5) }
+  })
+  const boxW = Math.max(...measured.map(l => l.w)) + BOX_PAD * 2
+  const boxH = measured.reduce((s, l) => s + l.h, 0) + BOX_PAD * 2
+  const boxX = PAD
+  const boxY = PAD
+
+  // 地図ボックスと同じ背景色・透明度
+  ctx.fillStyle = 'rgba(10,12,24,0.40)'
+  ctx.beginPath()
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(boxX, boxY, boxW, boxH, CORNER)
+  } else {
+    ctx.rect(boxX, boxY, boxW, boxH)
+  }
+  ctx.fill()
+
+  // テキスト描画
+  ctx.shadowColor = 'rgba(0,0,0,0.6)'
+  ctx.shadowBlur = 4
+  ctx.shadowOffsetX = 1
+  ctx.shadowOffsetY = 1
+  let curY = boxY + BOX_PAD
+  for (const l of measured) {
+    ctx.font = `${l.bold ? 'bold ' : ''}${l.size}px ${FONT}`
+    ctx.fillStyle = 'rgba(255,255,255,0.95)'
+    ctx.fillText(l.text, boxX + BOX_PAD, curY)
+    curY += l.h
+  }
+  ctx.restore()
+}
+
+export async function render(
+  canvas: HTMLCanvasElement,
+  imageFile: File,
+  features: Feature[],
+  title = '',
+  subtitle = ''
+): Promise<void> {
+  const [japan, photo, exif] = await Promise.all([
+    loadJapan(),
+    loadImage(imageFile),
+    readExif(imageFile),
+  ])
+
+  // キャンバスサイズを写真に合わせる（最大幅 960px）
+  const MAX_W = 960
+  const { width: nw, height: nh } = imageSize(photo)
+  const scale = Math.min(1, MAX_W / nw)
+  const W = Math.round(nw * scale)
+  const H = Math.round(nh * scale)
+  canvas.width = W
+  canvas.height = H
+
+  const ctx = canvas.getContext('2d')!
+
+  // 写真を背景に描画
+  ctx.drawImage(photo as CanvasImageSource, 0, 0, W, H)
+  if ('close' in photo) photo.close()
+
+  // 地図エリア：右下 1/3 × 1/3 のコーナーインセット
+  const mapW = Math.round(W / 3)
+  const mapH = Math.round(H / 3)
+  const MAP_PAD = 16
+  const mapX = W - mapW - MAP_PAD
+  const mapY = H - mapH - MAP_PAD
+
+  // 地図背景（角丸）
+  const r = 12
+  ctx.save()
+  ctx.beginPath()
+  ctx.roundRect(mapX, mapY, mapW, mapH, r)
+  ctx.clip()
+
+  ctx.fillStyle = 'rgba(10,12,24,0.40)'
+  ctx.fillRect(mapX, mapY, mapW, mapH)
+
+  // 都道府県境界
+  const bounds = buildBounds(features)
+  const INNER_PAD = 14
+  const project = makeProjector(
+    bounds,
+    mapX + INNER_PAD,
+    mapY + INNER_PAD,
+    mapW - INNER_PAD * 2,
+    mapH - INNER_PAD * 2
+  )
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'
+  ctx.lineWidth = 1.4
+  for (const feature of japan.features) {
+    const geom = feature.geometry
+    const polys: number[][][][] =
+      geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates
+    for (const poly of polys) {
+      for (const ring of poly) {
+        ctx.beginPath()
+        drawRing(ctx, ring, project)
+        ctx.stroke()
+      }
+    }
+  }
+
+  // ルート（LineString）
+  ctx.strokeStyle = '#ff6b6b'
+  ctx.lineWidth = 2
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+  for (const f of features) {
+    if (f.type !== 'LineString') continue
+    ctx.beginPath()
+    const [x0, y0] = project(f.coordinates[0][0], f.coordinates[0][1])
+    ctx.moveTo(x0, y0)
+    for (let i = 1; i < f.coordinates.length; i++) {
+      const [x, y] = project(f.coordinates[i][0], f.coordinates[i][1])
+      ctx.lineTo(x, y)
+    }
+    ctx.stroke()
+  }
+
+  // GPS 位置マーカー
+  if (exif.latitude != null && exif.longitude != null) {
+    const [px, py] = project(exif.longitude, exif.latitude)
+    const r = Math.max(4, Math.round(Math.min(mapW, mapH) * 0.03))
+    ctx.beginPath()
+    ctx.arc(px, py, r, 0, Math.PI * 2)
+    ctx.fillStyle = '#ff6b6b'
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+  }
+
+  ctx.restore()
+
+  // テキストオーバーレイ（左上）
+  drawTextOverlay(ctx, title, subtitle, exif, W)
+}
