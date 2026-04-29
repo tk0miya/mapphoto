@@ -1,6 +1,9 @@
-node_modules/
-dist/
-.DS_Store
-.claude/
+# NOTE: Entries are sorted in ASCII order.
+
+/.claude/settings.local.json
+/.claude/worktrees/
+/dist/
+/node_modules/
 *.heic
 *.heif
+.DS_Store
