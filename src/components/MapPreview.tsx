@@ -6,9 +6,8 @@ interface Props {
 }
 
 export const MapPreview = forwardRef<HTMLCanvasElement, Props>(({ visible, loading }, ref) => {
-  if (!visible) return null;
   return (
-    <div className="canvas-wrapper">
+    <div className="canvas-wrapper" style={{ display: visible ? "inline-block" : "none" }}>
       <canvas ref={ref} className="map-canvas" />
       {loading && (
         <div className="loading-overlay">
