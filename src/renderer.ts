@@ -104,7 +104,7 @@ function parseTiffExif(buf: ArrayBuffer): ExifData {
   return result;
 }
 
-async function readExif(file: File): Promise<ExifData> {
+export async function readExif(file: File): Promise<ExifData> {
   const buf = await file.arrayBuffer();
 
   // JPEG など: exifr で試みる
@@ -150,10 +150,11 @@ function formatCoords(lat: number, lon: number): string {
   return `${latDeg}°${latDir}  ${lonDeg}°${lonDir}`;
 }
 
-function formatDate(d: Date): string {
+function formatDate(d: Date, withTime: boolean): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
+  if (!withTime) return `${y}/${m}/${day}`;
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
   return `${y}/${m}/${day} ${hh}:${mm}`;
@@ -345,7 +346,27 @@ interface TextLine {
   bold?: boolean;
 }
 
-function drawTextOverlay(ctx: CanvasRenderingContext2D, title: string, subtitle: string, exif: ExifData, W: number) {
+export type Corner = "tl" | "tr" | "bl" | "br";
+export type DateSource = "exif" | "now";
+export type DateFormat = "date" | "datetime" | "none";
+
+export interface RenderOptions {
+  title: string;
+  subtitle: string;
+  dateSource: DateSource;
+  dateFormat: DateFormat;
+  textPosition: Corner;
+  showMap: boolean;
+  mapPosition: Corner;
+}
+
+function resolveDate(opts: RenderOptions, exif: ExifData): Date | null {
+  if (opts.dateFormat === "none") return null;
+  if (opts.dateSource === "now") return new Date();
+  return exif.DateTimeOriginal ?? null;
+}
+
+function drawTextOverlay(ctx: CanvasRenderingContext2D, opts: RenderOptions, exif: ExifData, W: number, H: number) {
   const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
   const baseSize = Math.round(W * 0.022);
   const PAD = Math.round(baseSize * 0.8);
@@ -353,9 +374,14 @@ function drawTextOverlay(ctx: CanvasRenderingContext2D, title: string, subtitle:
   const CORNER = 12;
 
   const lines: TextLine[] = [];
-  if (title) lines.push({ text: title, size: Math.round(baseSize * 1.4), bold: true });
-  if (subtitle) lines.push({ text: subtitle, size: Math.round(baseSize * 1.0) });
-  if (exif.DateTimeOriginal) lines.push({ text: formatDate(exif.DateTimeOriginal), size: Math.round(baseSize * 0.85) });
+  if (opts.title) lines.push({ text: opts.title, size: Math.round(baseSize * 1.4), bold: true });
+  if (opts.subtitle) lines.push({ text: opts.subtitle, size: Math.round(baseSize * 1.0) });
+
+  const date = resolveDate(opts, exif);
+  if (date) {
+    lines.push({ text: formatDate(date, opts.dateFormat === "datetime"), size: Math.round(baseSize * 0.85) });
+  }
+
   if (exif.latitude != null && exif.longitude != null)
     lines.push({ text: formatCoords(exif.latitude, exif.longitude), size: Math.round(baseSize * 0.85) });
 
@@ -371,8 +397,10 @@ function drawTextOverlay(ctx: CanvasRenderingContext2D, title: string, subtitle:
   });
   const boxW = Math.max(...measured.map((l) => l.w)) + BOX_PAD * 2;
   const boxH = measured.reduce((s, l) => s + l.h, 0) + BOX_PAD * 2;
-  const boxX = PAD;
-  const boxY = PAD;
+  const isRight = opts.textPosition === "tr" || opts.textPosition === "br";
+  const isBottom = opts.textPosition === "bl" || opts.textPosition === "br";
+  const boxX = isRight ? W - boxW - PAD : PAD;
+  const boxY = isBottom ? H - boxH - PAD : PAD;
 
   // 地図ボックスと同じ背景色・透明度
   ctx.fillStyle = "rgba(10,12,24,0.40)";
@@ -399,39 +427,23 @@ function drawTextOverlay(ctx: CanvasRenderingContext2D, title: string, subtitle:
   ctx.restore();
 }
 
-export async function render(
-  canvas: HTMLCanvasElement,
-  imageFile: File,
+function drawMapOverlay(
+  ctx: CanvasRenderingContext2D,
+  japan: { features: PrefectureFeature[] },
   features: Feature[],
-  title = "",
-  subtitle = "",
-): Promise<void> {
-  const [japan, photo, exif] = await Promise.all([loadJapan(), loadImage(imageFile), readExif(imageFile)]);
-
-  // キャンバスサイズを写真に合わせる（最大幅 960px）
-  const MAX_W = 960;
-  const { width: nw, height: nh } = imageSize(photo);
-  const scale = Math.min(1, MAX_W / nw);
-  const W = Math.round(nw * scale);
-  const H = Math.round(nh * scale);
-  canvas.width = W;
-  canvas.height = H;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("2d context unavailable");
-
-  // 写真を背景に描画
-  ctx.drawImage(photo as CanvasImageSource, 0, 0, W, H);
-  if ("close" in photo) photo.close();
-
-  // 地図エリア：右下 1/3 × 1/3 のコーナーインセット
+  exif: ExifData,
+  W: number,
+  H: number,
+  position: Corner,
+) {
   const mapW = Math.round(W / 3);
   const mapH = Math.round(H / 3);
   const MAP_PAD = 16;
-  const mapX = W - mapW - MAP_PAD;
-  const mapY = H - mapH - MAP_PAD;
+  const isRight = position === "tr" || position === "br";
+  const isBottom = position === "bl" || position === "br";
+  const mapX = isRight ? W - mapW - MAP_PAD : MAP_PAD;
+  const mapY = isBottom ? H - mapH - MAP_PAD : MAP_PAD;
 
-  // 地図背景（角丸）
   const r = 12;
   ctx.save();
   ctx.beginPath();
@@ -441,7 +453,6 @@ export async function render(
   ctx.fillStyle = "rgba(10,12,24,0.40)";
   ctx.fillRect(mapX, mapY, mapW, mapH);
 
-  // 都道府県境界
   const bounds = buildBounds(features);
   const INNER_PAD = 14;
   const project = makeProjector(bounds, mapX + INNER_PAD, mapY + INNER_PAD, mapW - INNER_PAD * 2, mapH - INNER_PAD * 2);
@@ -460,7 +471,6 @@ export async function render(
     }
   }
 
-  // ルート（LineString）
   ctx.strokeStyle = "#ff6b6b";
   ctx.lineWidth = 2;
   ctx.lineJoin = "round";
@@ -477,12 +487,11 @@ export async function render(
     ctx.stroke();
   }
 
-  // GPS 位置マーカー
   if (exif.latitude != null && exif.longitude != null) {
     const [px, py] = project(exif.longitude, exif.latitude);
-    const r = Math.max(4, Math.round(Math.min(mapW, mapH) * 0.03));
+    const markerR = Math.max(4, Math.round(Math.min(mapW, mapH) * 0.03));
     ctx.beginPath();
-    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.arc(px, py, markerR, 0, Math.PI * 2);
     ctx.fillStyle = "#ff6b6b";
     ctx.fill();
     ctx.strokeStyle = "rgba(255,255,255,0.85)";
@@ -491,7 +500,38 @@ export async function render(
   }
 
   ctx.restore();
+}
 
-  // テキストオーバーレイ（左上）
-  drawTextOverlay(ctx, title, subtitle, exif, W);
+export async function render(
+  canvas: HTMLCanvasElement,
+  imageFile: File,
+  features: Feature[],
+  options: RenderOptions,
+): Promise<void> {
+  const [photo, exif, japan] = await Promise.all([
+    loadImage(imageFile),
+    readExif(imageFile),
+    options.showMap ? loadJapan() : Promise.resolve(null),
+  ]);
+
+  // キャンバスサイズを写真に合わせる（最大幅 960px）
+  const MAX_W = 960;
+  const { width: nw, height: nh } = imageSize(photo);
+  const scale = Math.min(1, MAX_W / nw);
+  const W = Math.round(nw * scale);
+  const H = Math.round(nh * scale);
+  canvas.width = W;
+  canvas.height = H;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("2d context unavailable");
+
+  ctx.drawImage(photo as CanvasImageSource, 0, 0, W, H);
+  if ("close" in photo) photo.close();
+
+  if (options.showMap && japan) {
+    drawMapOverlay(ctx, japan, features, exif, W, H, options.mapPosition);
+  }
+
+  drawTextOverlay(ctx, options, exif, W, H);
 }

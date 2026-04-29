@@ -16,19 +16,69 @@
       align-items: center;
       padding: 40px 16px;
       gap: 24px;
+      color: #1e293b;
     }
 
     h1 {
       font-size: 1.4rem;
       font-weight: 600;
-      color: #1e293b;
     }
+
+    /* ステップインジケータ */
+    .stepper {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      max-width: 640px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stepper .step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    .stepper .step .num {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #cbd5e1;
+      color: white;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+    }
+
+    .stepper .step.active { color: #1e293b; font-weight: 600; }
+    .stepper .step.active .num { background: #2563eb; }
+    .stepper .step.done .num { background: #16a34a; }
+    .stepper .divider {
+      flex: 0 0 24px;
+      height: 1px;
+      background: #cbd5e1;
+    }
+
+    /* ステップ本体 */
+    .step-panel {
+      width: 100%;
+      max-width: 640px;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .step-panel.active { display: flex; }
 
     .inputs {
       display: flex;
       gap: 16px;
       width: 100%;
-      max-width: 640px;
     }
 
     .drop-area {
@@ -54,18 +104,14 @@
       background: #eff6ff;
     }
 
-    .drop-area:hover {
-      border-color: #2563eb;
-    }
+    .drop-area:hover { border-color: #2563eb; }
 
     .drop-area.selected {
       border-color: #16a34a;
       background: #f0fdf4;
     }
 
-    .drop-area .icon {
-      font-size: 2rem;
-    }
+    .drop-area .icon { font-size: 2rem; }
 
     .drop-area .filename {
       font-size: 0.78rem;
@@ -74,41 +120,114 @@
       word-break: break-all;
     }
 
-    #status {
-      font-size: 0.9rem;
-      color: #64748b;
-      min-height: 1.4em;
+    input[type="file"] { display: none; }
+
+    /* フォーム */
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: white;
+      padding: 14px 16px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
     }
 
-    #download-btn {
-      padding: 10px 28px;
-      background: #2563eb;
-      color: white;
+    .field > label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .field input[type="text"],
+    .field select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: #1e293b;
+      background: white;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+
+    .field input[type="text"]:focus,
+    .field select:focus { border-color: #2563eb; }
+
+    .field input[type="text"]::placeholder { color: #94a3b8; }
+
+    .radio-group {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .radio-group label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    /* ボタン */
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 4px;
+    }
+
+    .actions.between { justify-content: space-between; }
+
+    button {
+      padding: 10px 24px;
       border: none;
       border-radius: 8px;
       font-size: 0.95rem;
       cursor: pointer;
       font-family: inherit;
-      transition: background 0.15s;
+      transition: background 0.15s, color 0.15s;
     }
 
-    #download-btn:hover:not(:disabled) {
-      background: #1d4ed8;
-    }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+    .btn-primary:disabled { background: #94a3b8; cursor: default; }
 
-    #download-btn:disabled {
-      background: #94a3b8;
-      cursor: default;
+    .btn-secondary {
+      background: white;
+      color: #1e293b;
+      border: 1.5px solid #cbd5e1;
+    }
+    .btn-secondary:hover { background: #f8fafc; border-color: #94a3b8; }
+
+    /* ステップ3 */
+    #status {
+      font-size: 0.9rem;
+      color: #64748b;
+      min-height: 1.4em;
+      text-align: center;
     }
 
     #canvas-wrapper {
       display: none;
       position: relative;
+      align-self: center;
     }
 
-    #canvas-wrapper.visible {
-      display: inline-block;
-    }
+    #canvas-wrapper.visible { display: inline-block; }
 
     #map-canvas {
       max-width: 100%;
@@ -127,9 +246,7 @@
       justify-content: center;
     }
 
-    #loading-overlay.active {
-      display: flex;
-    }
+    #loading-overlay.active { display: flex; }
 
     .spinner {
       width: 44px;
@@ -140,72 +257,108 @@
       animation: spin 0.75s linear infinite;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    input[type="file"] { display: none; }
-
-    .text-inputs {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      width: 100%;
-      max-width: 640px;
-    }
-
-    .text-inputs input[type="text"] {
-      width: 100%;
-      padding: 10px 14px;
-      border: 1.5px solid #cbd5e1;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-family: inherit;
-      color: #1e293b;
-      background: white;
-      transition: border-color 0.15s;
-      outline: none;
-    }
-
-    .text-inputs input[type="text"]:focus {
-      border-color: #2563eb;
-    }
-
-    .text-inputs input[type="text"]::placeholder {
-      color: #94a3b8;
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
   <h1>KMZ マップ生成</h1>
 
-  <div class="inputs">
-    <div class="drop-area" id="drop-photo">
-      <div class="icon">📷</div>
-      <span>写真をドロップ<br>またはクリックして選択</span>
-      <span class="filename" id="photo-name"></span>
+  <div class="stepper" id="stepper">
+    <div class="step active" data-step="1"><span class="num">1</span><span>ファイル</span></div>
+    <div class="divider"></div>
+    <div class="step" data-step="2"><span class="num">2</span><span>情報設定</span></div>
+    <div class="divider"></div>
+    <div class="step" data-step="3"><span class="num">3</span><span>出力</span></div>
+  </div>
+
+  <!-- Step 1: ファイルアップロード -->
+  <section class="step-panel active" id="panel-1">
+    <div class="inputs">
+      <div class="drop-area" id="drop-photo">
+        <div class="icon">📷</div>
+        <span>写真をドロップ<br>またはクリックして選択</span>
+        <span class="filename" id="photo-name"></span>
+      </div>
+      <div class="drop-area" id="drop-kmz">
+        <div class="icon">🗺️</div>
+        <span>KMZ をドロップ<br>またはクリックして選択</span>
+        <span class="filename" id="kmz-name"></span>
+      </div>
     </div>
-    <div class="drop-area" id="drop-kmz">
-      <div class="icon">🗺️</div>
-      <span>KMZ をドロップ<br>またはクリックして選択</span>
-      <span class="filename" id="kmz-name"></span>
+    <input type="file" id="photo-input" accept="image/*">
+    <input type="file" id="kmz-input" accept=".kmz">
+    <div class="actions">
+      <button type="button" class="btn-primary" id="step1-next" disabled>次へ</button>
     </div>
-  </div>
+  </section>
 
-  <div class="text-inputs">
-    <input type="text" id="title-input" placeholder="タイトル（省略可）">
-    <input type="text" id="subtitle-input" placeholder="サブタイトル（省略可）">
-  </div>
+  <!-- Step 2: 情報設定 -->
+  <section class="step-panel" id="panel-2">
+    <div class="field">
+      <label for="title-input">タイトル</label>
+      <input type="text" id="title-input" placeholder="（省略可）">
+    </div>
+    <div class="field">
+      <label for="subtitle-input">サブタイトル</label>
+      <input type="text" id="subtitle-input" placeholder="（省略可）">
+    </div>
+    <div class="field">
+      <label>日付</label>
+      <div class="radio-group">
+        <label><input type="radio" name="date-source" value="exif" checked>EXIF（撮影日時）</label>
+        <label><input type="radio" name="date-source" value="now">現在時刻</label>
+      </div>
+    </div>
+    <div class="field">
+      <label for="date-format">日付フォーマット</label>
+      <select id="date-format">
+        <option value="date">日付のみ</option>
+        <option value="datetime" selected>日付と時刻</option>
+        <option value="none">表示しない</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="text-position">テキスト情報表示位置</label>
+      <select id="text-position">
+        <option value="tl" selected>左上</option>
+        <option value="tr">右上</option>
+        <option value="bl">左下</option>
+        <option value="br">右下</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="toggle">
+        <input type="checkbox" id="show-map" checked>
+        <span>地図を表示する</span>
+      </label>
+    </div>
+    <div class="field" id="map-position-field">
+      <label for="map-position">地図表示位置</label>
+      <select id="map-position">
+        <option value="tl">左上</option>
+        <option value="tr">右上</option>
+        <option value="bl">左下</option>
+        <option value="br" selected>右下</option>
+      </select>
+    </div>
+    <div class="actions between">
+      <button type="button" class="btn-secondary" id="step2-back">戻る</button>
+      <button type="button" class="btn-primary" id="step2-next">画像を生成</button>
+    </div>
+  </section>
 
-  <input type="file" id="photo-input" accept="image/*">
-  <input type="file" id="kmz-input" accept=".kmz">
-  <p id="status"></p>
-  <button type="button" id="download-btn" disabled>PNG をダウンロード</button>
-
-  <div id="canvas-wrapper">
-    <canvas id="map-canvas"></canvas>
-    <div id="loading-overlay"><div class="spinner"></div></div>
-  </div>
+  <!-- Step 3: 画像出力 -->
+  <section class="step-panel" id="panel-3">
+    <p id="status"></p>
+    <div id="canvas-wrapper">
+      <canvas id="map-canvas"></canvas>
+      <div id="loading-overlay"><div class="spinner"></div></div>
+    </div>
+    <div class="actions between">
+      <button type="button" class="btn-secondary" id="step3-back">設定に戻る</button>
+      <button type="button" class="btn-primary" id="download-btn" disabled>PNG をダウンロード</button>
+    </div>
+  </section>
 
   <script type="module" src="/src/main.ts"></script>
 </body>
