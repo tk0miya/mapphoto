@@ -1,0 +1,169 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  background: #f1f5f9;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 16px;
+  gap: 24px;
+}
+
+h1 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.inputs {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  max-width: 640px;
+}
+
+.drop-area {
+  flex: 1;
+  border: 2px dashed #94a3b8;
+  border-radius: 12px;
+  padding: 28px 16px;
+  text-align: center;
+  cursor: pointer;
+  background: white;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+  color: #64748b;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.drop-area.drag-over {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.drop-area:hover {
+  border-color: #2563eb;
+}
+
+.drop-area.selected {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.drop-area .icon {
+  font-size: 2rem;
+}
+
+.drop-area .filename {
+  font-size: 0.78rem;
+  color: #16a34a;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.status {
+  font-size: 0.9rem;
+  color: #64748b;
+  min-height: 1.4em;
+}
+
+.download-btn {
+  padding: 10px 28px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.download-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.download-btn:disabled {
+  background: #94a3b8;
+  cursor: default;
+}
+
+.canvas-wrapper {
+  display: inline-block;
+  position: relative;
+}
+
+.map-canvas {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  display: block;
+}
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.text-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 640px;
+}
+
+.text-inputs input[type="text"] {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #1e293b;
+  background: white;
+  transition: border-color 0.15s;
+  outline: none;
+}
+
+.text-inputs input[type="text"]:focus {
+  border-color: #2563eb;
+}
+
+.text-inputs input[type="text"]::placeholder {
+  color: #94a3b8;
+}
