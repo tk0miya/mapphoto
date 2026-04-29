@@ -15,11 +15,16 @@
   "dependencies": {
     "exifr": "^7.1.3",
     "jszip": "^3.10.1",
-    "libheif-js": "^1.19.8"
+    "libheif-js": "^1.19.8",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",
     "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
     "typescript": "^6.0.3",
     "vite": "^8.0.10",
     "vitest": "^4.1.5"
