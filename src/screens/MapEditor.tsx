@@ -122,7 +122,14 @@ export function MapEditor() {
   const startOver = () => {
     setGenerationRequested(false);
     setRendered(false);
+    setLoading(false);
     setStatus("");
+    setPhotoFile(null);
+    setKmzFile(null);
+    setTitle("");
+    setSubtitle("");
+    setTextPosition("top-left");
+    setMapPosition("bottom-right");
     setScreen("upload");
   };
 
