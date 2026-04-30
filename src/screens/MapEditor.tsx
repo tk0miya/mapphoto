@@ -40,11 +40,12 @@ export function MapEditor() {
     }
   }, [kmzUrl]);
 
-  // 写真の GPS から地名を解決し、タイトル未入力ならプリフィルする。
-  // 同じ写真で何度もネットを叩かないよう、ファイル単位で 1 度だけ実行する。
+  // 写真が差し替わったらタイトルを一度クリアし、GPS から地名を解決できればプリフィルする。
+  // 解析中にユーザーが入力していたら上書きしない。
   useEffect(() => {
     if (!photoFile || prefilledFileRef.current === photoFile) return;
     prefilledFileRef.current = photoFile;
+    setTitle("");
 
     let cancelled = false;
     (async () => {
@@ -52,7 +53,6 @@ export function MapEditor() {
       if (cancelled || exif.latitude == null || exif.longitude == null) return;
       const place = formatPlace(await lookupPlace(exif.latitude, exif.longitude));
       if (cancelled || !place) return;
-      // ロード中にユーザーが入力していたら上書きしない
       setTitle((prev) => (prev === "" ? place : prev));
     })();
 
