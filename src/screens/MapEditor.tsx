@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { StepIndicator } from "../components/StepIndicator";
-import { attachExifToPng } from "../exif";
+import { attachExifToPng, type ExifData, readExif, toLocalDateTimeString } from "../exif";
 import { parseMapSource } from "../kmz";
 import { fetchMapSource, parseMapsUrl } from "../mapsUrl";
 import { render } from "../renderer";
+import { defaultMetadata, type Metadata } from "../types";
 import { MetadataForm } from "./MetadataForm";
 import { ResultView } from "./ResultView";
 import { UploadForm } from "./UploadForm";
@@ -17,11 +18,29 @@ export function MapEditor() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [kmzFile, setKmzFile] = useState<File | null>(null);
   const [kmzUrl, setKmzUrl] = useState("");
-  const [title, setTitle] = useState("");
-  const [subtitle, setSubtitle] = useState("");
+  const [exif, setExif] = useState<ExifData | null>(null);
+  const [metadata, setMetadata] = useState<Metadata>(defaultMetadata);
   const [status, setStatus] = useState("");
   const [rendered, setRendered] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!photoFile) {
+      setExif(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const data = await readExif(photoFile);
+      if (cancelled) return;
+      setExif(data);
+      const initialDate = data.DateTimeOriginal ?? new Date();
+      setMetadata((m) => ({ ...m, date: toLocalDateTimeString(initialDate) }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [photoFile]);
 
   useEffect(() => {
     if (stepIndex !== 2 || !photoFile) return;
@@ -52,7 +71,7 @@ export function MapEditor() {
         setStatus("描画中...");
         const canvas = canvasRef.current;
         if (!canvas) throw new Error("Canvas が初期化されていません");
-        await render(canvas, photoFile, features, title.trim(), subtitle.trim());
+        await render(canvas, photoFile, features, metadata, exif);
         if (cancelled) return;
         setRendered(true);
         setStatus("");
@@ -67,7 +86,7 @@ export function MapEditor() {
     return () => {
       cancelled = true;
     };
-  }, [stepIndex, photoFile, kmzFile, kmzUrl, title, subtitle]);
+  }, [stepIndex, photoFile, kmzFile, kmzUrl, metadata, exif]);
 
   const goToMetadata = () => {
     if (!photoFile) return;
@@ -95,7 +114,7 @@ export function MapEditor() {
       const pngBlob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
       });
-      const parts = [title.trim(), subtitle.trim()].filter(Boolean);
+      const parts = [metadata.title.trim(), metadata.subtitle.trim()].filter(Boolean);
       const description = parts.join(" / ");
       const finalBlob = await attachExifToPng(pngBlob, photoFile, {
         width: canvas.width,
@@ -130,14 +149,7 @@ export function MapEditor() {
         />
       )}
       {stepIndex === 1 && (
-        <MetadataForm
-          title={title}
-          subtitle={subtitle}
-          onTitleChange={setTitle}
-          onSubtitleChange={setSubtitle}
-          onBack={goToUpload}
-          onNext={goToOutput}
-        />
+        <MetadataForm metadata={metadata} onChange={setMetadata} onBack={goToUpload} onNext={goToOutput} />
       )}
       {stepIndex === 2 && (
         <ResultView

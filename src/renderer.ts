@@ -1,5 +1,5 @@
-import * as exifr from "exifr";
-import type { Feature } from "./types";
+import { type ExifData, readExif } from "./exif";
+import type { Feature, Metadata, Position } from "./types";
 
 type GeoJsonGeometry =
   | { type: "Polygon"; coordinates: number[][][] }
@@ -19,129 +19,6 @@ async function loadJapan() {
   return japanCache;
 }
 
-interface ExifData {
-  latitude?: number;
-  longitude?: number;
-  DateTimeOriginal?: Date;
-}
-
-function parseTiffExif(buf: ArrayBuffer): ExifData {
-  const b = new Uint8Array(buf);
-  if (b.length < 8) return {};
-  const le = b[0] === 0x49 && b[1] === 0x49;
-  if (!le && !(b[0] === 0x4d && b[1] === 0x4d)) return {};
-
-  const u16 = (o: number): number => (o + 2 > b.length ? 0 : le ? b[o] | (b[o + 1] << 8) : (b[o] << 8) | b[o + 1]);
-  const u32 = (o: number): number =>
-    o + 4 > b.length
-      ? 0
-      : le
-        ? (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0
-        : ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) >>> 0;
-  const rational = (o: number): number => {
-    if (o + 8 > b.length) return 0;
-    const d = u32(o + 4);
-    return d ? u32(o) / d : 0;
-  };
-
-  const ifd0 = u32(4);
-  if (ifd0 + 2 > b.length) return {};
-  const nTags = u16(ifd0);
-
-  let gpsOff = 0,
-    exifOff = 0;
-  for (let i = 0; i < nTags && ifd0 + 2 + (i + 1) * 12 <= b.length; i++) {
-    const e = ifd0 + 2 + i * 12;
-    const tag = u16(e);
-    if (tag === 0x8769) exifOff = u32(e + 8);
-    if (tag === 0x8825) gpsOff = u32(e + 8);
-  }
-
-  const result: ExifData = {};
-
-  if (exifOff && exifOff + 2 <= b.length) {
-    const n = u16(exifOff);
-    for (let i = 0; i < n && exifOff + 2 + (i + 1) * 12 <= b.length; i++) {
-      const e = exifOff + 2 + i * 12;
-      if (u16(e) === 0x9003) {
-        const count = u32(e + 4);
-        const off = count <= 4 ? e + 8 : u32(e + 8);
-        if (off + count <= b.length) {
-          const str = String.fromCharCode(...b.slice(off, off + count))
-            .replace(/\0/g, "")
-            .trim();
-          const m = str.match(/(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
-          if (m) result.DateTimeOriginal = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
-        }
-      }
-    }
-  }
-
-  if (gpsOff && gpsOff + 2 <= b.length) {
-    const n = u16(gpsOff);
-    let latRef = "N",
-      lonRef = "E",
-      lat = -1,
-      lon = -1;
-    for (let i = 0; i < n && gpsOff + 2 + (i + 1) * 12 <= b.length; i++) {
-      const e = gpsOff + 2 + i * 12;
-      const tag = u16(e);
-      if (tag === 0x0001 && e + 9 <= b.length) latRef = String.fromCharCode(b[e + 8]);
-      if (tag === 0x0003 && e + 9 <= b.length) lonRef = String.fromCharCode(b[e + 8]);
-      if (tag === 0x0002) {
-        const o = u32(e + 8);
-        lat = rational(o) + rational(o + 8) / 60 + rational(o + 16) / 3600;
-      }
-      if (tag === 0x0004) {
-        const o = u32(e + 8);
-        lon = rational(o) + rational(o + 8) / 60 + rational(o + 16) / 3600;
-      }
-    }
-    if (lat >= 0) result.latitude = latRef === "S" ? -lat : lat;
-    if (lon >= 0) result.longitude = lonRef === "W" ? -lon : lon;
-  }
-
-  return result;
-}
-
-async function readExif(file: File): Promise<ExifData> {
-  const buf = await file.arrayBuffer();
-
-  // JPEG など: exifr で試みる
-  try {
-    const all = await exifr.parse(buf, true);
-    if (all) {
-      const gps = await exifr.gps(buf).catch(() => null);
-      const r: ExifData = {
-        latitude: gps?.latitude ?? all.latitude,
-        longitude: gps?.longitude ?? all.longitude,
-        DateTimeOriginal: all.DateTimeOriginal,
-      };
-      console.log("[EXIF] exifr OK:", r);
-      return r;
-    }
-  } catch {
-    /* fall through */
-  }
-
-  // HEIC など: TIFF ヘッダーをスキャンして直接パース
-  const scan = new Uint8Array(buf, 0, Math.min(buf.byteLength, 2 * 1024 * 1024));
-  for (let i = 0; i < scan.length - 8; i++) {
-    const isLE = scan[i] === 0x49 && scan[i + 1] === 0x49 && scan[i + 2] === 0x2a && scan[i + 3] === 0x00;
-    const isBE = scan[i] === 0x4d && scan[i + 1] === 0x4d && scan[i + 2] === 0x00 && scan[i + 3] === 0x2a;
-    if (isLE || isBE) {
-      const r = parseTiffExif(buf.slice(i));
-      if (r.latitude != null || r.DateTimeOriginal != null) {
-        console.log("[EXIF] manual parse at offset", i, ":", r);
-        return r;
-      }
-    }
-  }
-
-  console.warn("[EXIF] no data found");
-  return {};
-}
-
 function formatCoords(lat: number, lon: number): string {
   const latDir = lat >= 0 ? "N" : "S";
   const lonDir = lon >= 0 ? "E" : "W";
@@ -150,13 +27,30 @@ function formatCoords(lat: number, lon: number): string {
   return `${latDeg}°${latDir}  ${lonDeg}°${lonDir}`;
 }
 
-function formatDate(d: Date): string {
+function formatDateOnly(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
+  return `${y}/${m}/${day}`;
+}
+
+function formatDateTime(d: Date): string {
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}/${m}/${day} ${hh}:${mm}`;
+  return `${formatDateOnly(d)} ${hh}:${mm}`;
+}
+
+function computeBoxPosition(
+  position: Position,
+  W: number,
+  H: number,
+  boxW: number,
+  boxH: number,
+  pad: number,
+): { x: number; y: number } {
+  const x = position.endsWith("left") ? pad : W - boxW - pad;
+  const y = position.startsWith("top") ? pad : H - boxH - pad;
+  return { x, y };
 }
 
 function buildBounds(features: Feature[]) {
@@ -345,17 +239,28 @@ interface TextLine {
   bold?: boolean;
 }
 
-function drawTextOverlay(ctx: CanvasRenderingContext2D, title: string, subtitle: string, exif: ExifData, W: number) {
+function drawTextOverlay(ctx: CanvasRenderingContext2D, exif: ExifData, W: number, H: number, metadata: Metadata) {
   const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
   const baseSize = Math.round(W * 0.022);
   const PAD = Math.round(baseSize * 0.8);
   const BOX_PAD = Math.round(baseSize * 0.7);
   const CORNER = 12;
 
+  const title = metadata.title.trim();
+  const subtitle = metadata.subtitle.trim();
+
   const lines: TextLine[] = [];
   if (title) lines.push({ text: title, size: Math.round(baseSize * 1.4), bold: true });
   if (subtitle) lines.push({ text: subtitle, size: Math.round(baseSize * 1.0) });
-  if (exif.DateTimeOriginal) lines.push({ text: formatDate(exif.DateTimeOriginal), size: Math.round(baseSize * 0.85) });
+
+  if (metadata.dateFormat !== "hidden" && metadata.date) {
+    const date = new Date(metadata.date);
+    if (!Number.isNaN(date.getTime())) {
+      const text = metadata.dateFormat === "datetime" ? formatDateTime(date) : formatDateOnly(date);
+      lines.push({ text, size: Math.round(baseSize * 0.85) });
+    }
+  }
+
   if (exif.latitude != null && exif.longitude != null)
     lines.push({ text: formatCoords(exif.latitude, exif.longitude), size: Math.round(baseSize * 0.85) });
 
@@ -371,8 +276,7 @@ function drawTextOverlay(ctx: CanvasRenderingContext2D, title: string, subtitle:
   });
   const boxW = Math.max(...measured.map((l) => l.w)) + BOX_PAD * 2;
   const boxH = measured.reduce((s, l) => s + l.h, 0) + BOX_PAD * 2;
-  const boxX = PAD;
-  const boxY = PAD;
+  const { x: boxX, y: boxY } = computeBoxPosition(metadata.textPosition, W, H, boxW, boxH, PAD);
 
   // 地図ボックスと同じ背景色・透明度
   ctx.fillStyle = "rgba(10,12,24,0.40)";
@@ -399,39 +303,20 @@ function drawTextOverlay(ctx: CanvasRenderingContext2D, title: string, subtitle:
   ctx.restore();
 }
 
-export async function render(
-  canvas: HTMLCanvasElement,
-  imageFile: File,
+function drawMapOverlay(
+  ctx: CanvasRenderingContext2D,
+  japan: { features: PrefectureFeature[] },
   features: Feature[],
-  title = "",
-  subtitle = "",
-): Promise<void> {
-  const [japan, photo, exif] = await Promise.all([loadJapan(), loadImage(imageFile), readExif(imageFile)]);
-
-  // キャンバスサイズを写真に合わせる（最大幅 960px）
-  const MAX_W = 960;
-  const { width: nw, height: nh } = imageSize(photo);
-  const scale = Math.min(1, MAX_W / nw);
-  const W = Math.round(nw * scale);
-  const H = Math.round(nh * scale);
-  canvas.width = W;
-  canvas.height = H;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("2d context unavailable");
-
-  // 写真を背景に描画
-  ctx.drawImage(photo as CanvasImageSource, 0, 0, W, H);
-  if ("close" in photo) photo.close();
-
-  // 地図エリア：右下 1/3 × 1/3 のコーナーインセット
+  exif: ExifData,
+  W: number,
+  H: number,
+  position: Position,
+) {
   const mapW = Math.round(W / 3);
   const mapH = Math.round(H / 3);
   const MAP_PAD = 16;
-  const mapX = W - mapW - MAP_PAD;
-  const mapY = H - mapH - MAP_PAD;
+  const { x: mapX, y: mapY } = computeBoxPosition(position, W, H, mapW, mapH, MAP_PAD);
 
-  // 地図背景（角丸）
   const r = 12;
   ctx.save();
   ctx.beginPath();
@@ -441,7 +326,6 @@ export async function render(
   ctx.fillStyle = "rgba(10,12,24,0.40)";
   ctx.fillRect(mapX, mapY, mapW, mapH);
 
-  // 都道府県境界
   const bounds = buildBounds(features);
   const INNER_PAD = 14;
   const project = makeProjector(bounds, mapX + INNER_PAD, mapY + INNER_PAD, mapW - INNER_PAD * 2, mapH - INNER_PAD * 2);
@@ -460,7 +344,6 @@ export async function render(
     }
   }
 
-  // ルート（LineString）
   ctx.strokeStyle = "#ff6b6b";
   ctx.lineWidth = 2;
   ctx.lineJoin = "round";
@@ -477,12 +360,11 @@ export async function render(
     ctx.stroke();
   }
 
-  // GPS 位置マーカー
   if (exif.latitude != null && exif.longitude != null) {
     const [px, py] = project(exif.longitude, exif.latitude);
-    const r = Math.max(4, Math.round(Math.min(mapW, mapH) * 0.03));
+    const markerR = Math.max(4, Math.round(Math.min(mapW, mapH) * 0.03));
     ctx.beginPath();
-    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.arc(px, py, markerR, 0, Math.PI * 2);
     ctx.fillStyle = "#ff6b6b";
     ctx.fill();
     ctx.strokeStyle = "rgba(255,255,255,0.85)";
@@ -491,7 +373,40 @@ export async function render(
   }
 
   ctx.restore();
+}
 
-  // テキストオーバーレイ（左上）
-  drawTextOverlay(ctx, title, subtitle, exif, W);
+export async function render(
+  canvas: HTMLCanvasElement,
+  imageFile: File,
+  features: Feature[],
+  metadata: Metadata,
+  exifData: ExifData | null,
+): Promise<void> {
+  const [japan, photo, exif] = await Promise.all([
+    loadJapan(),
+    loadImage(imageFile),
+    exifData ? Promise.resolve(exifData) : readExif(imageFile),
+  ]);
+
+  // キャンバスサイズを写真に合わせる（最大幅 960px）
+  const MAX_W = 960;
+  const { width: nw, height: nh } = imageSize(photo);
+  const scale = Math.min(1, MAX_W / nw);
+  const W = Math.round(nw * scale);
+  const H = Math.round(nh * scale);
+  canvas.width = W;
+  canvas.height = H;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("2d context unavailable");
+
+  // 写真を背景に描画
+  ctx.drawImage(photo as CanvasImageSource, 0, 0, W, H);
+  if ("close" in photo) photo.close();
+
+  if (metadata.showMap) {
+    drawMapOverlay(ctx, japan, features, exif, W, H, metadata.mapPosition);
+  }
+
+  drawTextOverlay(ctx, exif, W, H, metadata);
 }
