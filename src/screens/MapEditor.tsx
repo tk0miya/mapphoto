@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { StepIndicator } from "../components/StepIndicator";
 import { attachExifToPng } from "../exif";
 import { readExif } from "../exifReader";
 import { formatPlace, lookupPlace } from "../geocode";
@@ -12,13 +11,14 @@ import { MetadataForm } from "./MetadataForm";
 import { ResultView } from "./ResultView";
 import { UploadForm } from "./UploadForm";
 
-const STEPS = ["ファイルアップロード", "情報設定", "画像出力"];
+type Screen = "upload" | "output" | "settings";
 
 export function MapEditor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const prefilledFileRef = useRef<File | null>(null);
 
-  const [stepIndex, setStepIndex] = useState(0);
+  const [screen, setScreen] = useState<Screen>("upload");
+  const [generationRequested, setGenerationRequested] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [kmzFile, setKmzFile] = useState<File | null>(null);
   const [kmzUrl, setKmzUrl] = useState<string>(() => loadStoredKmzUrl(localStorage));
@@ -62,7 +62,7 @@ export function MapEditor() {
   }, [photoFile]);
 
   useEffect(() => {
-    if (stepIndex !== 2 || !photoFile) return;
+    if (!generationRequested || !photoFile) return;
 
     const urlParts = parseMapsUrl(kmzUrl);
     if (!kmzFile && !urlParts) return;
@@ -110,25 +110,36 @@ export function MapEditor() {
     return () => {
       cancelled = true;
     };
-  }, [stepIndex, photoFile, kmzFile, kmzUrl, title, subtitle, textPosition, mapPosition]);
+  }, [generationRequested, photoFile, kmzFile, kmzUrl, title, subtitle, textPosition, mapPosition]);
 
-  const goToMetadata = () => {
+  const generate = () => {
     if (!photoFile) return;
     if (!kmzFile && !parseMapsUrl(kmzUrl)) return;
-    setStepIndex(1);
+    setGenerationRequested(true);
+    setScreen("output");
   };
 
-  const goToOutput = () => {
-    setStepIndex(2);
-  };
-
-  const goToUpload = () => {
-    setStepIndex(0);
-  };
-
-  const goBackToMetadata = () => {
-    setStepIndex(1);
+  const startOver = () => {
+    setGenerationRequested(false);
+    setRendered(false);
     setStatus("");
+    setScreen("upload");
+  };
+
+  const openSettings = () => {
+    setScreen("settings");
+  };
+
+  const closeSettings = () => {
+    setScreen("output");
+  };
+
+  const applySettings = (next: { title: string; subtitle: string; textPosition: Corner; mapPosition: Corner }) => {
+    setTitle(next.title);
+    setSubtitle(next.subtitle);
+    setTextPosition(next.textPosition);
+    setMapPosition(next.mapPosition);
+    setScreen("output");
   };
 
   const download = async () => {
@@ -159,9 +170,8 @@ export function MapEditor() {
   return (
     <>
       <h1>KMZ マップ生成</h1>
-      <StepIndicator steps={STEPS} currentIndex={stepIndex} />
 
-      {stepIndex === 0 && (
+      {screen === "upload" && (
         <UploadForm
           photoFile={photoFile}
           kmzFile={kmzFile}
@@ -169,31 +179,28 @@ export function MapEditor() {
           onPhotoChange={setPhotoFile}
           onKmzChange={setKmzFile}
           onKmzUrlChange={setKmzUrl}
-          onNext={goToMetadata}
+          onGenerate={generate}
         />
       )}
-      {stepIndex === 1 && (
-        <MetadataForm
-          title={title}
-          subtitle={subtitle}
-          textPosition={textPosition}
-          mapPosition={mapPosition}
-          onTitleChange={setTitle}
-          onSubtitleChange={setSubtitle}
-          onTextPositionChange={setTextPosition}
-          onMapPositionChange={setMapPosition}
-          onBack={goToUpload}
-          onNext={goToOutput}
-        />
-      )}
-      {stepIndex === 2 && (
+      {screen === "output" && (
         <ResultView
           canvasRef={canvasRef}
           status={status}
           loading={loading}
           rendered={rendered}
-          onBack={goBackToMetadata}
+          onOpenSettings={openSettings}
           onDownload={download}
+          onStartOver={startOver}
+        />
+      )}
+      {screen === "settings" && (
+        <MetadataForm
+          initialTitle={title}
+          initialSubtitle={subtitle}
+          initialTextPosition={textPosition}
+          initialMapPosition={mapPosition}
+          onCancel={closeSettings}
+          onApply={applySettings}
         />
       )}
     </>
