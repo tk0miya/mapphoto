@@ -243,6 +243,7 @@ function drawTextOverlay(
   W: number,
   H: number,
   position: Corner,
+  showCoordinates: boolean,
 ) {
   const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
   const baseSize = Math.round(W * 0.022);
@@ -254,7 +255,7 @@ function drawTextOverlay(
   if (title) lines.push({ text: title, size: Math.round(baseSize * 1.4), bold: true });
   if (subtitle) lines.push({ text: subtitle, size: Math.round(baseSize * 1.0) });
   if (exif.DateTimeOriginal) lines.push({ text: formatDate(exif.DateTimeOriginal), size: Math.round(baseSize * 0.85) });
-  if (exif.latitude != null && exif.longitude != null)
+  if (showCoordinates && exif.latitude != null && exif.longitude != null)
     lines.push({ text: formatCoords(exif.latitude, exif.longitude), size: Math.round(baseSize * 0.85) });
 
   if (lines.length === 0) return;
@@ -301,6 +302,7 @@ export interface RenderOptions {
   subtitle?: string;
   textPosition?: Corner;
   mapPosition?: Corner;
+  showCoordinates?: boolean;
 }
 
 export async function render(
@@ -309,7 +311,13 @@ export async function render(
   features: Feature[],
   options: RenderOptions = {},
 ): Promise<void> {
-  const { title = "", subtitle = "", textPosition = "top-left", mapPosition = "bottom-right" } = options;
+  const {
+    title = "",
+    subtitle = "",
+    textPosition = "top-left",
+    mapPosition = "bottom-right",
+    showCoordinates = true,
+  } = options;
 
   const [japan, photo, exif] = await Promise.all([loadJapan(), loadImage(imageFile), readExif(imageFile)]);
 
@@ -397,5 +405,5 @@ export async function render(
   ctx.restore();
 
   // テキストオーバーレイ
-  drawTextOverlay(ctx, title, subtitle, exif, W, H, textPosition);
+  drawTextOverlay(ctx, title, subtitle, exif, W, H, textPosition, showCoordinates);
 }

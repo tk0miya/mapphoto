@@ -26,6 +26,7 @@ export function MapEditor() {
   const [subtitle, setSubtitle] = useState("");
   const [textPosition, setTextPosition] = useState<Corner>("top-left");
   const [mapPosition, setMapPosition] = useState<Corner>("bottom-right");
+  const [showCoordinates, setShowCoordinates] = useState(true);
   const [status, setStatus] = useState("");
   const [rendered, setRendered] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -95,6 +96,7 @@ export function MapEditor() {
           subtitle: subtitle.trim(),
           textPosition,
           mapPosition,
+          showCoordinates,
         });
         if (cancelled) return;
         setRendered(true);
@@ -110,7 +112,7 @@ export function MapEditor() {
     return () => {
       cancelled = true;
     };
-  }, [generationRequested, photoFile, kmzFile, kmzUrl, title, subtitle, textPosition, mapPosition]);
+  }, [generationRequested, photoFile, kmzFile, kmzUrl, title, subtitle, textPosition, mapPosition, showCoordinates]);
 
   const generate = () => {
     if (!photoFile) return;
@@ -130,6 +132,7 @@ export function MapEditor() {
     setSubtitle("");
     setTextPosition("top-left");
     setMapPosition("bottom-right");
+    setShowCoordinates(true);
     setScreen("upload");
   };
 
@@ -141,11 +144,18 @@ export function MapEditor() {
     setScreen("output");
   };
 
-  const applySettings = (next: { title: string; subtitle: string; textPosition: Corner; mapPosition: Corner }) => {
+  const applySettings = (next: {
+    title: string;
+    subtitle: string;
+    textPosition: Corner;
+    mapPosition: Corner;
+    showCoordinates: boolean;
+  }) => {
     setTitle(next.title);
     setSubtitle(next.subtitle);
     setTextPosition(next.textPosition);
     setMapPosition(next.mapPosition);
+    setShowCoordinates(next.showCoordinates);
     setScreen("output");
   };
 
@@ -206,6 +216,7 @@ export function MapEditor() {
           initialSubtitle={subtitle}
           initialTextPosition={textPosition}
           initialMapPosition={mapPosition}
+          initialShowCoordinates={showCoordinates}
           onCancel={closeSettings}
           onApply={applySettings}
         />
