@@ -40,8 +40,8 @@ function buildBounds(features: Feature[]) {
   const points = features.flatMap((f) => (f.type === "Point" ? [f.coordinates] : f.coordinates));
   const lons = points.map((p) => p[0]);
   const lats = points.map((p) => p[1]);
-  const padX = (Math.max(...lons) - Math.min(...lons)) * 0.35 + 0.2;
-  const padY = (Math.max(...lats) - Math.min(...lats)) * 0.35 + 0.2;
+  const padX = (Math.max(...lons) - Math.min(...lons)) * 0.1 + 0.05;
+  const padY = (Math.max(...lats) - Math.min(...lats)) * 0.1 + 0.05;
   return {
     minLon: Math.min(...lons) - padX,
     maxLon: Math.max(...lons) + padX,
