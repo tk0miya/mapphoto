@@ -156,6 +156,7 @@ h1 {
 
 .canvas-wrapper {
   position: relative;
+  max-width: 100%;
 }
 
 .map-canvas {
