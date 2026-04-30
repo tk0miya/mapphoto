@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { StepIndicator } from "../components/StepIndicator";
 import { parseKmz } from "../kmz";
 import { render } from "../renderer";
+import { MetadataForm } from "./MetadataForm";
 import { ResultView } from "./ResultView";
 import { UploadForm } from "./UploadForm";
 
-const STEPS = ["入力", "出力"];
+const STEPS = ["ファイルアップロード", "情報設定", "画像出力"];
 
 export function MapEditor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -20,7 +21,7 @@ export function MapEditor() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (stepIndex !== 1 || !photoFile || !kmzFile) return;
+    if (stepIndex !== 2 || !photoFile || !kmzFile) return;
 
     let cancelled = false;
     setRendered(false);
@@ -53,13 +54,21 @@ export function MapEditor() {
     };
   }, [stepIndex, photoFile, kmzFile, title, subtitle]);
 
-  const goToOutput = () => {
+  const goToMetadata = () => {
     if (!photoFile || !kmzFile) return;
     setStepIndex(1);
   };
 
-  const goBack = () => {
+  const goToOutput = () => {
+    setStepIndex(2);
+  };
+
+  const goToUpload = () => {
     setStepIndex(0);
+  };
+
+  const goBackToMetadata = () => {
+    setStepIndex(1);
     setStatus("");
   };
 
@@ -77,25 +86,32 @@ export function MapEditor() {
       <h1>KMZ マップ生成</h1>
       <StepIndicator steps={STEPS} currentIndex={stepIndex} />
 
-      {stepIndex === 0 ? (
+      {stepIndex === 0 && (
         <UploadForm
           photoFile={photoFile}
           kmzFile={kmzFile}
-          title={title}
-          subtitle={subtitle}
           onPhotoChange={setPhotoFile}
           onKmzChange={setKmzFile}
+          onNext={goToMetadata}
+        />
+      )}
+      {stepIndex === 1 && (
+        <MetadataForm
+          title={title}
+          subtitle={subtitle}
           onTitleChange={setTitle}
           onSubtitleChange={setSubtitle}
+          onBack={goToUpload}
           onNext={goToOutput}
         />
-      ) : (
+      )}
+      {stepIndex === 2 && (
         <ResultView
           canvasRef={canvasRef}
           status={status}
           loading={loading}
           rendered={rendered}
-          onBack={goBack}
+          onBack={goBackToMetadata}
           onDownload={download}
         />
       )}
