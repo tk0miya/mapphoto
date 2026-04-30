@@ -11,3 +11,5 @@ export type LineFeature = {
 export type Feature = PointFeature | LineFeature;
 
 export type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+export type Theme = "dark" | "light";

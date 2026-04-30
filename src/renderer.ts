@@ -1,5 +1,39 @@
 import { type ExifData, readExif } from "./exifReader";
-import type { Corner, Feature } from "./types";
+import type { Corner, Feature, Theme } from "./types";
+
+interface ThemePalette {
+  mapBackground: string;
+  prefectureStroke: string;
+  routeStroke: string;
+  markerFill: string;
+  markerStroke: string;
+  textBackground: string;
+  textFill: string;
+  textShadow: string;
+}
+
+const THEMES: Record<Theme, ThemePalette> = {
+  dark: {
+    mapBackground: "rgba(10,12,24,0.40)",
+    prefectureStroke: "rgba(255,255,255,0.35)",
+    routeStroke: "#ff6b6b",
+    markerFill: "#ff6b6b",
+    markerStroke: "rgba(255,255,255,0.85)",
+    textBackground: "rgba(10,12,24,0.40)",
+    textFill: "rgba(255,255,255,0.95)",
+    textShadow: "rgba(0,0,0,0.6)",
+  },
+  light: {
+    mapBackground: "rgba(245,245,245,0.85)",
+    prefectureStroke: "rgba(60,60,60,0.55)",
+    routeStroke: "#d63b3b",
+    markerFill: "#d63b3b",
+    markerStroke: "rgba(255,255,255,0.95)",
+    textBackground: "rgba(245,245,245,0.85)",
+    textFill: "rgba(20,20,20,0.95)",
+    textShadow: "rgba(255,255,255,0.7)",
+  },
+};
 
 type GeoJsonGeometry =
   | { type: "Polygon"; coordinates: number[][][] }
@@ -244,6 +278,7 @@ function drawTextOverlay(
   H: number,
   position: Corner,
   showCoordinates: boolean,
+  palette: ThemePalette,
 ) {
   const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
   const baseSize = Math.round(W * 0.022);
@@ -273,7 +308,7 @@ function drawTextOverlay(
   const { x: boxX, y: boxY } = cornerOffset(position, W, H, boxW, boxH, PAD);
 
   // 地図ボックスと同じ背景色・透明度
-  ctx.fillStyle = "rgba(10,12,24,0.40)";
+  ctx.fillStyle = palette.textBackground;
   ctx.beginPath();
   if (typeof ctx.roundRect === "function") {
     ctx.roundRect(boxX, boxY, boxW, boxH, CORNER);
@@ -283,14 +318,14 @@ function drawTextOverlay(
   ctx.fill();
 
   // テキスト描画
-  ctx.shadowColor = "rgba(0,0,0,0.6)";
+  ctx.shadowColor = palette.textShadow;
   ctx.shadowBlur = 4;
   ctx.shadowOffsetX = 1;
   ctx.shadowOffsetY = 1;
   let curY = boxY + BOX_PAD;
   for (const l of measured) {
     ctx.font = `${l.bold ? "bold " : ""}${l.size}px ${FONT}`;
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    ctx.fillStyle = palette.textFill;
     ctx.fillText(l.text, boxX + BOX_PAD, curY);
     curY += l.h;
   }
@@ -303,6 +338,7 @@ export interface RenderOptions {
   textPosition?: Corner;
   mapPosition?: Corner;
   showCoordinates?: boolean;
+  theme?: Theme;
 }
 
 export async function render(
@@ -317,7 +353,9 @@ export async function render(
     textPosition = "top-left",
     mapPosition = "bottom-right",
     showCoordinates = true,
+    theme = "dark",
   } = options;
+  const palette = THEMES[theme];
 
   const [japan, photo, exif] = await Promise.all([loadJapan(), loadImage(imageFile), readExif(imageFile)]);
 
@@ -350,7 +388,7 @@ export async function render(
   ctx.roundRect(mapX, mapY, mapW, mapH, r);
   ctx.clip();
 
-  ctx.fillStyle = "rgba(10,12,24,0.40)";
+  ctx.fillStyle = palette.mapBackground;
   ctx.fillRect(mapX, mapY, mapW, mapH);
 
   // 都道府県境界
@@ -358,7 +396,7 @@ export async function render(
   const INNER_PAD = 14;
   const project = makeProjector(bounds, mapX + INNER_PAD, mapY + INNER_PAD, mapW - INNER_PAD * 2, mapH - INNER_PAD * 2);
 
-  ctx.strokeStyle = "rgba(255,255,255,0.35)";
+  ctx.strokeStyle = palette.prefectureStroke;
   ctx.lineWidth = 1.4;
   for (const feature of japan.features) {
     const geom = feature.geometry;
@@ -373,7 +411,7 @@ export async function render(
   }
 
   // ルート（LineString）
-  ctx.strokeStyle = "#ff6b6b";
+  ctx.strokeStyle = palette.routeStroke;
   ctx.lineWidth = 2;
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
@@ -395,9 +433,9 @@ export async function render(
     const r = Math.max(4, Math.round(Math.min(mapW, mapH) * 0.03));
     ctx.beginPath();
     ctx.arc(px, py, r, 0, Math.PI * 2);
-    ctx.fillStyle = "#ff6b6b";
+    ctx.fillStyle = palette.markerFill;
     ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.strokeStyle = palette.markerStroke;
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
@@ -405,5 +443,5 @@ export async function render(
   ctx.restore();
 
   // テキストオーバーレイ
-  drawTextOverlay(ctx, title, subtitle, exif, W, H, textPosition, showCoordinates);
+  drawTextOverlay(ctx, title, subtitle, exif, W, H, textPosition, showCoordinates, palette);
 }

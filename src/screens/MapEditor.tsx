@@ -6,7 +6,7 @@ import { parseMapSource } from "../kmz";
 import { loadStoredKmzUrl, saveKmzUrl } from "../kmzUrlStorage";
 import { fetchMapSource, parseMapsUrl } from "../mapsUrl";
 import { render } from "../renderer";
-import type { Corner } from "../types";
+import type { Corner, Theme } from "../types";
 import { MetadataForm } from "./MetadataForm";
 import { ResultView } from "./ResultView";
 import { UploadForm } from "./UploadForm";
@@ -27,6 +27,7 @@ export function MapEditor() {
   const [textPosition, setTextPosition] = useState<Corner>("top-left");
   const [mapPosition, setMapPosition] = useState<Corner>("bottom-right");
   const [showCoordinates, setShowCoordinates] = useState(true);
+  const [theme, setTheme] = useState<Theme>("dark");
   const [status, setStatus] = useState("");
   const [rendered, setRendered] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -97,6 +98,7 @@ export function MapEditor() {
           textPosition,
           mapPosition,
           showCoordinates,
+          theme,
         });
         if (cancelled) return;
         setRendered(true);
@@ -112,7 +114,18 @@ export function MapEditor() {
     return () => {
       cancelled = true;
     };
-  }, [generationRequested, photoFile, kmzFile, kmzUrl, title, subtitle, textPosition, mapPosition, showCoordinates]);
+  }, [
+    generationRequested,
+    photoFile,
+    kmzFile,
+    kmzUrl,
+    title,
+    subtitle,
+    textPosition,
+    mapPosition,
+    showCoordinates,
+    theme,
+  ]);
 
   const generate = () => {
     if (!photoFile) return;
@@ -133,6 +146,7 @@ export function MapEditor() {
     setTextPosition("top-left");
     setMapPosition("bottom-right");
     setShowCoordinates(true);
+    setTheme("dark");
     setScreen("upload");
   };
 
@@ -150,12 +164,14 @@ export function MapEditor() {
     textPosition: Corner;
     mapPosition: Corner;
     showCoordinates: boolean;
+    theme: Theme;
   }) => {
     setTitle(next.title);
     setSubtitle(next.subtitle);
     setTextPosition(next.textPosition);
     setMapPosition(next.mapPosition);
     setShowCoordinates(next.showCoordinates);
+    setTheme(next.theme);
     setScreen("output");
   };
 
@@ -217,6 +233,7 @@ export function MapEditor() {
           initialTextPosition={textPosition}
           initialMapPosition={mapPosition}
           initialShowCoordinates={showCoordinates}
+          initialTheme={theme}
           onCancel={closeSettings}
           onApply={applySettings}
         />
