@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { DropArea } from "../components/DropArea";
-import { MapPreview } from "../components/MapPreview";
+import { StepIndicator } from "../components/StepIndicator";
 import { parseKmz } from "../kmz";
 import { render } from "../renderer";
+import { ResultView } from "./ResultView";
+import { UploadForm } from "./UploadForm";
 
-const TEXT_DEBOUNCE_MS = 600;
+const STEPS = ["入力", "出力"];
 
 export function MapEditor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const renderedRef = useRef(false);
-  const prevFilesRef = useRef<{ photo: File | null; kmz: File | null }>({ photo: null, kmz: null });
 
+  const [stepIndex, setStepIndex] = useState(0);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [kmzFile, setKmzFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
@@ -20,36 +20,48 @@ export function MapEditor() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!photoFile || !kmzFile) return;
-    const filesChanged = prevFilesRef.current.photo !== photoFile || prevFilesRef.current.kmz !== kmzFile;
-    prevFilesRef.current = { photo: photoFile, kmz: kmzFile };
-    const delay = filesChanged ? 0 : TEXT_DEBOUNCE_MS;
+    if (stepIndex !== 1 || !photoFile || !kmzFile) return;
 
-    const id = setTimeout(async () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+    let cancelled = false;
+    setRendered(false);
+    setLoading(true);
+    setStatus("読み込み中...");
 
-      setStatus("読み込み中...");
-      if (renderedRef.current) setLoading(true);
-
+    (async () => {
       try {
         const features = await parseKmz(kmzFile);
+        if (cancelled) return;
         if (features.length === 0) throw new Error("Placemark が見つかりませんでした");
 
         setStatus("描画中...");
+        const canvas = canvasRef.current;
+        if (!canvas) throw new Error("Canvas が初期化されていません");
         await render(canvas, photoFile, features, title.trim(), subtitle.trim());
-        renderedRef.current = true;
+        if (cancelled) return;
         setRendered(true);
         setStatus("");
       } catch (e) {
+        if (cancelled) return;
         setStatus(`エラー: ${e instanceof Error ? e.message : String(e)}`);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    }, delay);
+    })();
 
-    return () => clearTimeout(id);
-  }, [photoFile, kmzFile, title, subtitle]);
+    return () => {
+      cancelled = true;
+    };
+  }, [stepIndex, photoFile, kmzFile, title, subtitle]);
+
+  const goToOutput = () => {
+    if (!photoFile || !kmzFile) return;
+    setStepIndex(1);
+  };
+
+  const goBack = () => {
+    setStepIndex(0);
+    setStatus("");
+  };
 
   const download = () => {
     const canvas = canvasRef.current;
@@ -63,52 +75,30 @@ export function MapEditor() {
   return (
     <>
       <h1>KMZ マップ生成</h1>
+      <StepIndicator steps={STEPS} currentIndex={stepIndex} />
 
-      <div className="inputs">
-        <DropArea
-          icon="📷"
-          label={
-            <>
-              写真をドロップ
-              <br />
-              またはクリックして選択
-            </>
-          }
-          accept="image/*"
-          fileName={photoFile?.name ?? null}
-          onFile={setPhotoFile}
+      {stepIndex === 0 ? (
+        <UploadForm
+          photoFile={photoFile}
+          kmzFile={kmzFile}
+          title={title}
+          subtitle={subtitle}
+          onPhotoChange={setPhotoFile}
+          onKmzChange={setKmzFile}
+          onTitleChange={setTitle}
+          onSubtitleChange={setSubtitle}
+          onNext={goToOutput}
         />
-        <DropArea
-          icon="🗺️"
-          label={
-            <>
-              KMZ をドロップ
-              <br />
-              またはクリックして選択
-            </>
-          }
-          accept=".kmz"
-          fileName={kmzFile?.name ?? null}
-          onFile={setKmzFile}
+      ) : (
+        <ResultView
+          canvasRef={canvasRef}
+          status={status}
+          loading={loading}
+          rendered={rendered}
+          onBack={goBack}
+          onDownload={download}
         />
-      </div>
-
-      <div className="text-inputs">
-        <input type="text" placeholder="タイトル（省略可）" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <input
-          type="text"
-          placeholder="サブタイトル（省略可）"
-          value={subtitle}
-          onChange={(e) => setSubtitle(e.target.value)}
-        />
-      </div>
-
-      <p className="status">{status}</p>
-      <button type="button" className="download-btn" disabled={!rendered || loading} onClick={download}>
-        PNG をダウンロード
-      </button>
-
-      <MapPreview ref={canvasRef} visible={rendered} loading={loading} />
+      )}
     </>
   );
 }

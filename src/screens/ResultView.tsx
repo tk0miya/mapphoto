@@ -1,0 +1,29 @@
+import type { RefObject } from "react";
+import { MapPreview } from "../components/MapPreview";
+
+interface Props {
+  canvasRef: RefObject<HTMLCanvasElement | null>;
+  status: string;
+  loading: boolean;
+  rendered: boolean;
+  onBack: () => void;
+  onDownload: () => void;
+}
+
+export function ResultView({ canvasRef, status, loading, rendered, onBack, onDownload }: Props) {
+  return (
+    <>
+      <p className="status">{status}</p>
+      <MapPreview ref={canvasRef} visible={true} loading={loading} />
+
+      <div className="wizard-nav">
+        <button type="button" className="secondary-btn" onClick={onBack}>
+          戻る
+        </button>
+        <button type="button" className="primary-btn" disabled={!rendered || loading} onClick={onDownload}>
+          PNG をダウンロード
+        </button>
+      </div>
+    </>
+  );
+}
