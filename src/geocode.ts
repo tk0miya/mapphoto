@@ -26,16 +26,16 @@ interface MuniEntry {
 let muniTablePromise: Promise<Map<string, MuniEntry>> | null = null;
 const lookupCache = new Map<string, Promise<PlaceInfo>>();
 
-// muni.js の中身は GSI.MUNI_ARRAY[code] = 'pref,city,...'; の繰り返し。
-// code は文字列・数値の両形式が観測されているため、いずれも受ける。
-function parseMuniTable(text: string): Map<string, MuniEntry> {
+// muni.js の中身は GSI.MUNI_ARRAY[code] = '都道府県コード,都道府県名,市区町村コード,市区町村名';
+// の繰り返し。code は文字列・数値の両形式が観測されているため、いずれも受ける。
+export function parseMuniTable(text: string): Map<string, MuniEntry> {
   const table = new Map<string, MuniEntry>();
   const re = /GSI\.MUNI_ARRAY\[\s*['"]?(\d+)['"]?\s*\]\s*=\s*['"]([^'"]+)['"]/g;
   for (const m of text.matchAll(re)) {
     const code = m[1].padStart(5, "0");
     const parts = m[2].split(",");
-    if (parts.length >= 2 && parts[0] && parts[1]) {
-      table.set(code, { pref: parts[0], city: parts[1] });
+    if (parts.length >= 4 && parts[1] && parts[3]) {
+      table.set(code, { pref: parts[1], city: parts[3] });
     }
   }
   return table;
