@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { MapPreview } from "../components/MapPreview";
 import { attachExifToPng } from "../exif";
 import { readExif } from "../exifReader";
 import { formatPlace, lookupPlace } from "../geocode";
@@ -215,10 +216,14 @@ export function MapEditor() {
           onGenerate={generate}
         />
       )}
+      {screen !== "upload" && (
+        <>
+          <p className="status">{status}</p>
+          <MapPreview ref={canvasRef} visible={screen === "output"} loading={loading} />
+        </>
+      )}
       {screen === "output" && (
         <ResultView
-          canvasRef={canvasRef}
-          status={status}
           loading={loading}
           rendered={rendered}
           onOpenSettings={openSettings}
