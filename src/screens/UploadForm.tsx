@@ -1,15 +1,21 @@
 import { DropArea } from "../components/DropArea";
+import { isProxyConfigured, parseMapsUrl } from "../mapsUrl";
 
 interface Props {
   photoFile: File | null;
   kmzFile: File | null;
+  kmzUrl: string;
   onPhotoChange: (file: File) => void;
   onKmzChange: (file: File) => void;
+  onKmzUrlChange: (value: string) => void;
   onNext: () => void;
 }
 
-export function UploadForm({ photoFile, kmzFile, onPhotoChange, onKmzChange, onNext }: Props) {
-  const canProceed = photoFile !== null && kmzFile !== null;
+export function UploadForm({ photoFile, kmzFile, kmzUrl, onPhotoChange, onKmzChange, onKmzUrlChange, onNext }: Props) {
+  const proxyEnabled = isProxyConfigured();
+  const urlParts = proxyEnabled ? parseMapsUrl(kmzUrl) : null;
+  const hasMapSource = kmzFile !== null || urlParts !== null;
+  const canProceed = photoFile !== null && hasMapSource;
 
   return (
     <>
@@ -41,6 +47,18 @@ export function UploadForm({ photoFile, kmzFile, onPhotoChange, onKmzChange, onN
           onFile={onKmzChange}
         />
       </div>
+
+      {proxyEnabled && (
+        <div className="text-inputs">
+          <div className="or-divider">または</div>
+          <input
+            type="url"
+            placeholder="Google マイマップ URL を貼り付け"
+            value={kmzUrl}
+            onChange={(e) => onKmzUrlChange(e.target.value)}
+          />
+        </div>
+      )}
 
       <div className="wizard-nav">
         <button type="button" className="primary-btn" disabled={!canProceed} onClick={onNext}>

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { StepIndicator } from "../components/StepIndicator";
 import { attachExifToPng } from "../exif";
-import { parseKmz } from "../kmz";
+import { parseMapSource } from "../kmz";
+import { fetchMapSource, parseMapsUrl } from "../mapsUrl";
 import { render } from "../renderer";
 import { MetadataForm } from "./MetadataForm";
 import { ResultView } from "./ResultView";
@@ -15,6 +16,7 @@ export function MapEditor() {
   const [stepIndex, setStepIndex] = useState(0);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [kmzFile, setKmzFile] = useState<File | null>(null);
+  const [kmzUrl, setKmzUrl] = useState("");
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [status, setStatus] = useState("");
@@ -22,16 +24,28 @@ export function MapEditor() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (stepIndex !== 2 || !photoFile || !kmzFile) return;
+    if (stepIndex !== 2 || !photoFile) return;
+
+    const urlParts = parseMapsUrl(kmzUrl);
+    if (!kmzFile && !urlParts) return;
 
     let cancelled = false;
     setRendered(false);
     setLoading(true);
-    setStatus("読み込み中...");
+    setStatus(kmzFile ? "読み込み中..." : "KML を取得中...");
 
     (async () => {
       try {
-        const features = await parseKmz(kmzFile);
+        let buf: ArrayBuffer;
+        if (kmzFile) {
+          buf = await kmzFile.arrayBuffer();
+        } else if (urlParts) {
+          buf = await fetchMapSource(urlParts);
+        } else {
+          return;
+        }
+        if (cancelled) return;
+        const features = await parseMapSource(buf);
         if (cancelled) return;
         if (features.length === 0) throw new Error("Placemark が見つかりませんでした");
 
@@ -53,10 +67,11 @@ export function MapEditor() {
     return () => {
       cancelled = true;
     };
-  }, [stepIndex, photoFile, kmzFile, title, subtitle]);
+  }, [stepIndex, photoFile, kmzFile, kmzUrl, title, subtitle]);
 
   const goToMetadata = () => {
-    if (!photoFile || !kmzFile) return;
+    if (!photoFile) return;
+    if (!kmzFile && !parseMapsUrl(kmzUrl)) return;
     setStepIndex(1);
   };
 
@@ -107,8 +122,10 @@ export function MapEditor() {
         <UploadForm
           photoFile={photoFile}
           kmzFile={kmzFile}
+          kmzUrl={kmzUrl}
           onPhotoChange={setPhotoFile}
           onKmzChange={setKmzFile}
+          onKmzUrlChange={setKmzUrl}
           onNext={goToMetadata}
         />
       )}
