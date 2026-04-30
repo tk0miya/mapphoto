@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapPreview } from "../components/MapPreview";
 import { attachExifToPng } from "../exif";
 import { readExif } from "../exifReader";
+import { DEFAULT_FONT, type FontKey } from "../fonts";
 import { formatPlace, lookupPlace } from "../geocode";
 import { parseMapSource } from "../kmz";
 import { loadStoredKmzUrl, saveKmzUrl } from "../kmzUrlStorage";
@@ -29,6 +30,7 @@ export function MapEditor() {
   const [mapPosition, setMapPosition] = useState<Corner>("bottom-right");
   const [showCoordinates, setShowCoordinates] = useState(true);
   const [theme, setTheme] = useState<Theme>("dark");
+  const [font, setFont] = useState<FontKey>(DEFAULT_FONT);
   const [status, setStatus] = useState("");
   const [rendered, setRendered] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -100,6 +102,7 @@ export function MapEditor() {
           mapPosition,
           showCoordinates,
           theme,
+          font,
         });
         if (cancelled) return;
         setRendered(true);
@@ -126,6 +129,7 @@ export function MapEditor() {
     mapPosition,
     showCoordinates,
     theme,
+    font,
   ]);
 
   const generate = () => {
@@ -148,6 +152,7 @@ export function MapEditor() {
     setMapPosition("bottom-right");
     setShowCoordinates(true);
     setTheme("dark");
+    setFont(DEFAULT_FONT);
     setScreen("upload");
   };
 
@@ -166,6 +171,7 @@ export function MapEditor() {
     mapPosition: Corner;
     showCoordinates: boolean;
     theme: Theme;
+    font: FontKey;
   }) => {
     setTitle(next.title);
     setSubtitle(next.subtitle);
@@ -173,6 +179,7 @@ export function MapEditor() {
     setMapPosition(next.mapPosition);
     setShowCoordinates(next.showCoordinates);
     setTheme(next.theme);
+    setFont(next.font);
     setScreen("output");
   };
 
@@ -239,6 +246,7 @@ export function MapEditor() {
           initialMapPosition={mapPosition}
           initialShowCoordinates={showCoordinates}
           initialTheme={theme}
+          initialFont={font}
           onCancel={closeSettings}
           onApply={applySettings}
         />
