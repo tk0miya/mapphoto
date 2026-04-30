@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { StepIndicator } from "../components/StepIndicator";
 import { attachExifToPng } from "../exif";
+import { readExif } from "../exifReader";
+import { formatPlace, lookupPlace } from "../geocode";
 import { parseMapSource } from "../kmz";
 import { loadStoredKmzUrl, saveKmzUrl } from "../kmzUrlStorage";
 import { fetchMapSource, parseMapsUrl } from "../mapsUrl";
@@ -14,6 +16,7 @@ const STEPS = ["ファイルアップロード", "情報設定", "画像出力"]
 
 export function MapEditor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const prefilledFileRef = useRef<File | null>(null);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -36,6 +39,27 @@ export function MapEditor() {
       saveKmzUrl(localStorage, kmzUrl);
     }
   }, [kmzUrl]);
+
+  // 写真の GPS から地名を解決し、タイトル未入力ならプリフィルする。
+  // 同じ写真で何度もネットを叩かないよう、ファイル単位で 1 度だけ実行する。
+  useEffect(() => {
+    if (!photoFile || prefilledFileRef.current === photoFile) return;
+    prefilledFileRef.current = photoFile;
+
+    let cancelled = false;
+    (async () => {
+      const exif = await readExif(photoFile);
+      if (cancelled || exif.latitude == null || exif.longitude == null) return;
+      const place = formatPlace(await lookupPlace(exif.latitude, exif.longitude));
+      if (cancelled || !place) return;
+      // ロード中にユーザーが入力していたら上書きしない
+      setTitle((prev) => (prev === "" ? place : prev));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [photoFile]);
 
   useEffect(() => {
     if (stepIndex !== 2 || !photoFile) return;
