@@ -12,13 +12,7 @@ function parseCoords(text: string): [number, number][] {
     .filter(([lon, lat]) => Number.isFinite(lon) && Number.isFinite(lat));
 }
 
-export async function parseKmz(file: File): Promise<Feature[]> {
-  const zip = await JSZip.loadAsync(file);
-
-  const kmlFile = zip.file("doc.kml");
-  if (!kmlFile) throw new Error("doc.kml が見つかりません");
-
-  const kmlText = await kmlFile.async("string");
+function parseKmlText(kmlText: string): Feature[] {
   const doc = new DOMParser().parseFromString(kmlText, "text/xml");
 
   const features: Feature[] = [];
@@ -41,4 +35,27 @@ export async function parseKmz(file: File): Promise<Feature[]> {
   }
 
   return features;
+}
+
+async function parseKmzBuffer(buf: ArrayBuffer): Promise<Feature[]> {
+  const zip = await JSZip.loadAsync(buf);
+  const kmlFile = zip.file("doc.kml");
+  if (!kmlFile) throw new Error("doc.kml が見つかりません");
+  const kmlText = await kmlFile.async("string");
+  return parseKmlText(kmlText);
+}
+
+export async function parseKmz(file: File): Promise<Feature[]> {
+  return parseKmzBuffer(await file.arrayBuffer());
+}
+
+// KMZ（zip）と KML（テキスト）を ArrayBuffer から自動判別してパースする。
+// プロキシは forcekml=1 でも KMZ を返すケースがあるため両対応する。
+export async function parseMapSource(buf: ArrayBuffer): Promise<Feature[]> {
+  const view = new Uint8Array(buf);
+  // ZIP ローカルファイルヘッダのマジックバイト "PK\x03\x04"
+  if (view[0] === 0x50 && view[1] === 0x4b) {
+    return parseKmzBuffer(buf);
+  }
+  return parseKmlText(new TextDecoder("utf-8").decode(buf));
 }

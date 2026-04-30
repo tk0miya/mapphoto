@@ -230,7 +230,8 @@ h1 {
   max-width: 640px;
 }
 
-.text-inputs input[type="text"] {
+.text-inputs input[type="text"],
+.text-inputs input[type="url"] {
   width: 100%;
   padding: 10px 14px;
   border: 1.5px solid #cbd5e1;
@@ -243,10 +244,30 @@ h1 {
   outline: none;
 }
 
-.text-inputs input[type="text"]:focus {
+.text-inputs input[type="text"]:focus,
+.text-inputs input[type="url"]:focus {
   border-color: #2563eb;
 }
 
-.text-inputs input[type="text"]::placeholder {
+.text-inputs input[type="text"]::placeholder,
+.text-inputs input[type="url"]::placeholder {
   color: #94a3b8;
+}
+
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+.or-divider::before,
+.or-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #cbd5e1;
 }
