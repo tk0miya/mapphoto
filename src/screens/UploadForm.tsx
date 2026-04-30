@@ -41,32 +41,34 @@ export function UploadForm({
           fileName={photoFile?.name ?? null}
           onFile={onPhotoChange}
         />
-        <DropArea
-          icon="🗺️"
-          label={
-            <>
-              KMZ をドロップ
-              <br />
-              またはクリックして選択
-            </>
-          }
-          accept=".kmz"
-          fileName={kmzFile?.name ?? null}
-          onFile={onKmzChange}
-        />
-      </div>
-
-      {proxyEnabled && (
-        <div className="text-inputs">
-          <div className="or-divider">または</div>
-          <input
-            type="url"
-            placeholder="Google マイマップ URL を貼り付け"
-            value={kmzUrl}
-            onChange={(e) => onKmzUrlChange(e.target.value)}
+        <div className="map-source">
+          <DropArea
+            icon="🗺️"
+            label={
+              <>
+                KMZ をドロップ
+                <br />
+                またはクリックして選択
+              </>
+            }
+            accept=".kmz"
+            fileName={kmzFile?.name ?? null}
+            onFile={onKmzChange}
           />
+          {proxyEnabled && (
+            <>
+              <div className="or-divider">または</div>
+              <input
+                type="url"
+                className="url-input"
+                placeholder="Google マイマップ URL を貼り付け"
+                value={kmzUrl}
+                onChange={(e) => onKmzUrlChange(e.target.value)}
+              />
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       <div className="wizard-nav">
         <button type="button" className="primary-btn" disabled={!canProceed} onClick={onGenerate}>
