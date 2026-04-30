@@ -14,42 +14,36 @@ const WIKIPEDIA_RADIUS_M = 500;
 
 export interface PlaceInfo {
   poi?: string; // Wikipedia の最寄り記事タイトル（例: 東京タワー）
-  pref?: string; // 都道府県（例: 東京都）
   city?: string; // 市区町村（例: 港区）
 }
 
-interface MuniEntry {
-  pref: string;
-  city: string;
-}
-
-let muniTablePromise: Promise<Map<string, MuniEntry>> | null = null;
+let muniTablePromise: Promise<Map<string, string>> | null = null;
 const lookupCache = new Map<string, Promise<PlaceInfo>>();
 
 // muni.js の中身は GSI.MUNI_ARRAY[code] = '都道府県コード,都道府県名,市区町村コード,市区町村名';
 // の繰り返し。code は文字列・数値の両形式が観測されているため、いずれも受ける。
-export function parseMuniTable(text: string): Map<string, MuniEntry> {
-  const table = new Map<string, MuniEntry>();
+export function parseMuniTable(text: string): Map<string, string> {
+  const table = new Map<string, string>();
   const re = /GSI\.MUNI_ARRAY\[\s*['"]?(\d+)['"]?\s*\]\s*=\s*['"]([^'"]+)['"]/g;
   for (const m of text.matchAll(re)) {
     const code = m[1].padStart(5, "0");
     const parts = m[2].split(",");
-    if (parts.length >= 4 && parts[1] && parts[3]) {
-      table.set(code, { pref: parts[1], city: parts[3] });
+    if (parts.length >= 4 && parts[3]) {
+      table.set(code, parts[3]);
     }
   }
   return table;
 }
 
-async function loadMuniTable(): Promise<Map<string, MuniEntry>> {
+async function loadMuniTable(): Promise<Map<string, string>> {
   if (!muniTablePromise) {
     muniTablePromise = (async () => {
       try {
         const resp = await fetch(GSI_MUNI_URL);
-        if (!resp.ok) return new Map<string, MuniEntry>();
+        if (!resp.ok) return new Map<string, string>();
         return parseMuniTable(await resp.text());
       } catch {
-        return new Map<string, MuniEntry>();
+        return new Map<string, string>();
       }
     })();
   }
@@ -116,11 +110,8 @@ export async function lookupPlace(lat: number, lon: number): Promise<PlaceInfo> 
     const info: PlaceInfo = {};
     if (poi) info.poi = poi;
     if (gsi.muniCd) {
-      const entry = muni.get(String(gsi.muniCd).padStart(5, "0"));
-      if (entry) {
-        info.pref = entry.pref;
-        info.city = entry.city;
-      }
+      const city = muni.get(String(gsi.muniCd).padStart(5, "0"));
+      if (city) info.city = city;
     }
     return info;
   })();
@@ -132,13 +123,11 @@ export async function lookupPlace(lat: number, lon: number): Promise<PlaceInfo> 
 // 優先順:
 //  1. "名所 @ 市区町村"  （両方取れた）
 //  2. "名所"             （市区町村は取れなかった）
-//  3. "都道府県市区町村"
-//  4. "都道府県"
+//  3. "市区町村"
 //  該当なしは undefined
 export function formatPlace(info: PlaceInfo): string | undefined {
-  const region = info.city ? `${info.pref ?? ""}${info.city}` : info.pref;
-  if (info.poi && region) return `${info.poi} @ ${region}`;
+  if (info.poi && info.city) return `${info.poi} @ ${info.city}`;
   if (info.poi) return info.poi;
-  if (region) return region;
+  if (info.city) return info.city;
   return undefined;
 }
