@@ -21,7 +21,7 @@ const THEMES: Record<Theme, ThemePalette> = {
     markerStroke: "rgba(255,255,255,0.85)",
     textBackground: "rgba(10,12,24,0.40)",
     textFill: "rgba(255,255,255,0.95)",
-    textShadow: "rgba(0,0,0,0.6)",
+    textShadow: "rgba(0,0,0,0.85)",
   },
   light: {
     mapBackground: "rgba(245,245,245,0.60)",
@@ -31,7 +31,7 @@ const THEMES: Record<Theme, ThemePalette> = {
     markerStroke: "rgba(255,255,255,0.95)",
     textBackground: "rgba(245,245,245,0.60)",
     textFill: "rgba(20,20,20,0.95)",
-    textShadow: "rgba(255,255,255,0.7)",
+    textShadow: "rgba(0,0,0,0.45)",
   },
 };
 
@@ -317,11 +317,11 @@ function drawTextOverlay(
   }
   ctx.fill();
 
-  // テキスト描画
+  // テキスト描画（ドロップシャドウ付き）
   ctx.shadowColor = palette.textShadow;
-  ctx.shadowBlur = 4;
-  ctx.shadowOffsetX = 1;
-  ctx.shadowOffsetY = 1;
+  ctx.shadowBlur = Math.max(4, Math.round(baseSize * 0.35));
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = Math.max(1, Math.round(baseSize * 0.12));
   let curY = boxY + BOX_PAD;
   for (const l of measured) {
     ctx.font = `${l.bold ? "bold " : ""}${l.size}px ${FONT}`;
