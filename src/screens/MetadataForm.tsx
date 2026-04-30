@@ -6,8 +6,15 @@ interface Props {
   initialSubtitle: string;
   initialTextPosition: Corner;
   initialMapPosition: Corner;
+  initialShowCoordinates: boolean;
   onCancel: () => void;
-  onApply: (next: { title: string; subtitle: string; textPosition: Corner; mapPosition: Corner }) => void;
+  onApply: (next: {
+    title: string;
+    subtitle: string;
+    textPosition: Corner;
+    mapPosition: Corner;
+    showCoordinates: boolean;
+  }) => void;
 }
 
 const CORNER_OPTIONS: { value: Corner; label: string }[] = [
@@ -22,6 +29,7 @@ export function MetadataForm({
   initialSubtitle,
   initialTextPosition,
   initialMapPosition,
+  initialShowCoordinates,
   onCancel,
   onApply,
 }: Props) {
@@ -29,6 +37,7 @@ export function MetadataForm({
   const [subtitle, setSubtitle] = useState(initialSubtitle);
   const [textPosition, setTextPosition] = useState<Corner>(initialTextPosition);
   const [mapPosition, setMapPosition] = useState<Corner>(initialMapPosition);
+  const [showCoordinates, setShowCoordinates] = useState(initialShowCoordinates);
 
   return (
     <>
@@ -62,6 +71,11 @@ export function MetadataForm({
             ))}
           </select>
         </label>
+
+        <label className="form-row">
+          <span>座標を表示</span>
+          <input type="checkbox" checked={showCoordinates} onChange={(e) => setShowCoordinates(e.target.checked)} />
+        </label>
       </div>
 
       <div className="wizard-nav">
@@ -71,7 +85,7 @@ export function MetadataForm({
         <button
           type="button"
           className="primary-btn"
-          onClick={() => onApply({ title, subtitle, textPosition, mapPosition })}
+          onClick={() => onApply({ title, subtitle, textPosition, mapPosition, showCoordinates })}
         >
           適用
         </button>
