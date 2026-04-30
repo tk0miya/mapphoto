@@ -22,8 +22,5 @@ KMZ は Google Maps My Maps から個別レイヤーを「KMZ としてエクス
 **サーバーレス・無料運用を優先**
 すべての処理をブラウザ内で完結させ、ホスティングコストをゼロにする。GitHub Pages や Netlify への静的ファイル配信を想定している。
 
-**依存を最小限に**
-Vanilla TypeScript + Vite のみで構成し、UI フレームワークは使用しない。ランタイム依存は jszip（KMZ 展開）・exifr（EXIF 読み取り）・libheif-js（HEIC デコード）の 3 つに絞っている。
-
 **HEIC 対応**
 iPhone で撮影した写真をそのまま扱えることを重視した。Safari や macOS Chrome のネイティブ対応を優先し、失敗時に libheif-js（HEVC 対応）へフォールバックする。
