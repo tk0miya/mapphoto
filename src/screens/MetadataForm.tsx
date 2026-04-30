@@ -1,16 +1,13 @@
+import { useState } from "react";
 import type { Corner } from "../types";
 
 interface Props {
-  title: string;
-  subtitle: string;
-  textPosition: Corner;
-  mapPosition: Corner;
-  onTitleChange: (value: string) => void;
-  onSubtitleChange: (value: string) => void;
-  onTextPositionChange: (value: Corner) => void;
-  onMapPositionChange: (value: Corner) => void;
-  onBack: () => void;
-  onNext: () => void;
+  initialTitle: string;
+  initialSubtitle: string;
+  initialTextPosition: Corner;
+  initialMapPosition: Corner;
+  onCancel: () => void;
+  onApply: (next: { title: string; subtitle: string; textPosition: Corner; mapPosition: Corner }) => void;
 }
 
 const CORNER_OPTIONS: { value: Corner; label: string }[] = [
@@ -21,36 +18,32 @@ const CORNER_OPTIONS: { value: Corner; label: string }[] = [
 ];
 
 export function MetadataForm({
-  title,
-  subtitle,
-  textPosition,
-  mapPosition,
-  onTitleChange,
-  onSubtitleChange,
-  onTextPositionChange,
-  onMapPositionChange,
-  onBack,
-  onNext,
+  initialTitle,
+  initialSubtitle,
+  initialTextPosition,
+  initialMapPosition,
+  onCancel,
+  onApply,
 }: Props) {
+  const [title, setTitle] = useState(initialTitle);
+  const [subtitle, setSubtitle] = useState(initialSubtitle);
+  const [textPosition, setTextPosition] = useState<Corner>(initialTextPosition);
+  const [mapPosition, setMapPosition] = useState<Corner>(initialMapPosition);
+
   return (
     <>
       <div className="text-inputs">
-        <input
-          type="text"
-          placeholder="タイトル（省略可）"
-          value={title}
-          onChange={(e) => onTitleChange(e.target.value)}
-        />
+        <input type="text" placeholder="タイトル（省略可）" value={title} onChange={(e) => setTitle(e.target.value)} />
         <input
           type="text"
           placeholder="サブタイトル（省略可）"
           value={subtitle}
-          onChange={(e) => onSubtitleChange(e.target.value)}
+          onChange={(e) => setSubtitle(e.target.value)}
         />
 
         <label className="form-row">
           <span>テキスト情報表示位置</span>
-          <select value={textPosition} onChange={(e) => onTextPositionChange(e.target.value as Corner)}>
+          <select value={textPosition} onChange={(e) => setTextPosition(e.target.value as Corner)}>
             {CORNER_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -61,7 +54,7 @@ export function MetadataForm({
 
         <label className="form-row">
           <span>地図表示位置</span>
-          <select value={mapPosition} onChange={(e) => onMapPositionChange(e.target.value as Corner)}>
+          <select value={mapPosition} onChange={(e) => setMapPosition(e.target.value as Corner)}>
             {CORNER_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -72,11 +65,15 @@ export function MetadataForm({
       </div>
 
       <div className="wizard-nav">
-        <button type="button" className="secondary-btn" onClick={onBack}>
-          戻る
+        <button type="button" className="secondary-btn" onClick={onCancel}>
+          キャンセル
         </button>
-        <button type="button" className="primary-btn" onClick={onNext}>
-          次へ
+        <button
+          type="button"
+          className="primary-btn"
+          onClick={() => onApply({ title, subtitle, textPosition, mapPosition })}
+        >
+          適用
         </button>
       </div>
     </>

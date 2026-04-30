@@ -8,10 +8,18 @@ interface Props {
   onPhotoChange: (file: File) => void;
   onKmzChange: (file: File) => void;
   onKmzUrlChange: (value: string) => void;
-  onNext: () => void;
+  onGenerate: () => void;
 }
 
-export function UploadForm({ photoFile, kmzFile, kmzUrl, onPhotoChange, onKmzChange, onKmzUrlChange, onNext }: Props) {
+export function UploadForm({
+  photoFile,
+  kmzFile,
+  kmzUrl,
+  onPhotoChange,
+  onKmzChange,
+  onKmzUrlChange,
+  onGenerate,
+}: Props) {
   const proxyEnabled = isProxyConfigured();
   const urlParts = proxyEnabled ? parseMapsUrl(kmzUrl) : null;
   const hasMapSource = kmzFile !== null || urlParts !== null;
@@ -61,8 +69,8 @@ export function UploadForm({ photoFile, kmzFile, kmzUrl, onPhotoChange, onKmzCha
       )}
 
       <div className="wizard-nav">
-        <button type="button" className="primary-btn" disabled={!canProceed} onClick={onNext}>
-          次へ
+        <button type="button" className="primary-btn" disabled={!canProceed} onClick={onGenerate}>
+          生成
         </button>
       </div>
     </>
