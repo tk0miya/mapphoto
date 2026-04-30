@@ -2,7 +2,7 @@
 
 // Cloudflare Worker（worker/）をデプロイした URL に書き換える。
 // 空文字のままだと URL 入力欄は表示されず、KMZ ファイル方式のみ有効になる。
-const PROXY_URL = "";
+const PROXY_URL = "https://mapphoto-kml-proxy.i-tkomiya.workers.dev";
 
 export type MapsUrlParts = {
   mid: string;
