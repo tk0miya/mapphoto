@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Corner } from "../types";
+import type { Corner, Theme } from "../types";
 
 interface Props {
   initialTitle: string;
@@ -7,6 +7,7 @@ interface Props {
   initialTextPosition: Corner;
   initialMapPosition: Corner;
   initialShowCoordinates: boolean;
+  initialTheme: Theme;
   onCancel: () => void;
   onApply: (next: {
     title: string;
@@ -14,6 +15,7 @@ interface Props {
     textPosition: Corner;
     mapPosition: Corner;
     showCoordinates: boolean;
+    theme: Theme;
   }) => void;
 }
 
@@ -24,12 +26,18 @@ const CORNER_OPTIONS: { value: Corner; label: string }[] = [
   { value: "bottom-right", label: "右下" },
 ];
 
+const THEME_OPTIONS: { value: Theme; label: string }[] = [
+  { value: "dark", label: "ダーク（暗い背景）" },
+  { value: "light", label: "ライト（明るい背景）" },
+];
+
 export function MetadataForm({
   initialTitle,
   initialSubtitle,
   initialTextPosition,
   initialMapPosition,
   initialShowCoordinates,
+  initialTheme,
   onCancel,
   onApply,
 }: Props) {
@@ -38,6 +46,7 @@ export function MetadataForm({
   const [textPosition, setTextPosition] = useState<Corner>(initialTextPosition);
   const [mapPosition, setMapPosition] = useState<Corner>(initialMapPosition);
   const [showCoordinates, setShowCoordinates] = useState(initialShowCoordinates);
+  const [theme, setTheme] = useState<Theme>(initialTheme);
 
   return (
     <>
@@ -76,6 +85,17 @@ export function MetadataForm({
           <span>座標を表示</span>
           <input type="checkbox" checked={showCoordinates} onChange={(e) => setShowCoordinates(e.target.checked)} />
         </label>
+
+        <label className="form-row">
+          <span>配色テーマ</span>
+          <select value={theme} onChange={(e) => setTheme(e.target.value as Theme)}>
+            {THEME_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="wizard-nav">
@@ -85,7 +105,7 @@ export function MetadataForm({
         <button
           type="button"
           className="primary-btn"
-          onClick={() => onApply({ title, subtitle, textPosition, mapPosition, showCoordinates })}
+          onClick={() => onApply({ title, subtitle, textPosition, mapPosition, showCoordinates, theme })}
         >
           適用
         </button>
