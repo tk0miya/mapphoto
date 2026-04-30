@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { StepIndicator } from "../components/StepIndicator";
+import { attachExifToPng } from "../exif";
 import { parseKmz } from "../kmz";
 import { render } from "../renderer";
 import { ResultView } from "./ResultView";
@@ -63,13 +64,29 @@ export function MapEditor() {
     setStatus("");
   };
 
-  const download = () => {
+  const download = async () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const a = document.createElement("a");
-    a.href = canvas.toDataURL("image/png");
-    a.download = "map.png";
-    a.click();
+    if (!canvas || !photoFile) return;
+    try {
+      const pngBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
+      });
+      const parts = [title.trim(), subtitle.trim()].filter(Boolean);
+      const description = parts.join(" / ");
+      const finalBlob = await attachExifToPng(pngBlob, photoFile, {
+        width: canvas.width,
+        height: canvas.height,
+        imageDescription: description || undefined,
+      });
+      const url = URL.createObjectURL(finalBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "map.png";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      setStatus(`ダウンロードに失敗: ${e instanceof Error ? e.message : String(e)}`);
+    }
   };
 
   return (
