@@ -1,4 +1,5 @@
 import { type ExifData, readExif } from "./exifReader";
+import { DEFAULT_FONT, ensureFontReady, type FontKey, getFontPreset } from "./fonts";
 import type { Corner, Feature, Theme } from "./types";
 
 interface ThemePalette {
@@ -279,8 +280,9 @@ function drawTextOverlay(
   position: Corner,
   showCoordinates: boolean,
   palette: ThemePalette,
+  font: FontKey,
 ) {
-  const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+  const preset = getFontPreset(font);
   const baseSize = Math.round(W * 0.022);
   const PAD = Math.round(baseSize * 0.8);
   const BOX_PAD = Math.round(baseSize * 0.7);
@@ -295,12 +297,14 @@ function drawTextOverlay(
 
   if (lines.length === 0) return;
 
+  const fontSpec = (l: TextLine) => `${l.bold ? preset.boldWeight : preset.regularWeight} ${l.size}px ${preset.family}`;
+
   ctx.save();
   ctx.textBaseline = "top";
 
   // 各行の高さと最大幅を計算
   const measured = lines.map((l) => {
-    ctx.font = `${l.bold ? "bold " : ""}${l.size}px ${FONT}`;
+    ctx.font = fontSpec(l);
     return { ...l, w: ctx.measureText(l.text).width, h: Math.round(l.size * 1.5) };
   });
   const boxW = Math.max(...measured.map((l) => l.w)) + BOX_PAD * 2;
@@ -324,7 +328,7 @@ function drawTextOverlay(
   ctx.shadowOffsetY = 1;
   let curY = boxY + BOX_PAD;
   for (const l of measured) {
-    ctx.font = `${l.bold ? "bold " : ""}${l.size}px ${FONT}`;
+    ctx.font = fontSpec(l);
     ctx.fillStyle = palette.textFill;
     ctx.fillText(l.text, boxX + BOX_PAD, curY);
     curY += l.h;
@@ -339,6 +343,7 @@ export interface RenderOptions {
   mapPosition?: Corner;
   showCoordinates?: boolean;
   theme?: Theme;
+  font?: FontKey;
 }
 
 export async function render(
@@ -354,10 +359,26 @@ export async function render(
     mapPosition = "bottom-right",
     showCoordinates = true,
     theme = "dark",
+    font = DEFAULT_FONT,
   } = options;
   const palette = THEMES[theme];
 
   const [japan, photo, exif] = await Promise.all([loadJapan(), loadImage(imageFile), readExif(imageFile)]);
+
+  // 描画に使うサイズの目安と全テキストを渡してサブセットをロード
+  const baseSize = Math.round(Math.min(960, imageSize(photo).width) * 0.022);
+  await ensureFontReady(
+    getFontPreset(font),
+    [Math.round(baseSize * 1.4), baseSize, Math.round(baseSize * 0.85)],
+    [
+      title,
+      subtitle,
+      exif.DateTimeOriginal ? formatDate(exif.DateTimeOriginal) : "",
+      showCoordinates && exif.latitude != null && exif.longitude != null
+        ? formatCoords(exif.latitude, exif.longitude)
+        : "",
+    ],
+  );
 
   // キャンバスサイズを写真に合わせる（最大幅 960px）
   const MAX_W = 960;
@@ -443,5 +464,5 @@ export async function render(
   ctx.restore();
 
   // テキストオーバーレイ
-  drawTextOverlay(ctx, title, subtitle, exif, W, H, textPosition, showCoordinates, palette);
+  drawTextOverlay(ctx, title, subtitle, exif, W, H, textPosition, showCoordinates, palette, font);
 }

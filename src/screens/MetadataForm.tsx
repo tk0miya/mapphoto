@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FONT_PRESETS, type FontKey } from "../fonts";
 import type { Corner, Theme } from "../types";
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
   initialMapPosition: Corner;
   initialShowCoordinates: boolean;
   initialTheme: Theme;
+  initialFont: FontKey;
   onCancel: () => void;
   onApply: (next: {
     title: string;
@@ -16,6 +18,7 @@ interface Props {
     mapPosition: Corner;
     showCoordinates: boolean;
     theme: Theme;
+    font: FontKey;
   }) => void;
 }
 
@@ -38,6 +41,7 @@ export function MetadataForm({
   initialMapPosition,
   initialShowCoordinates,
   initialTheme,
+  initialFont,
   onCancel,
   onApply,
 }: Props) {
@@ -47,6 +51,8 @@ export function MetadataForm({
   const [mapPosition, setMapPosition] = useState<Corner>(initialMapPosition);
   const [showCoordinates, setShowCoordinates] = useState(initialShowCoordinates);
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [font, setFont] = useState<FontKey>(initialFont);
+  const sample = title.trim() || subtitle.trim() || "旅の記録 Travel Log";
 
   return (
     <>
@@ -96,6 +102,29 @@ export function MetadataForm({
             ))}
           </select>
         </label>
+
+        <fieldset className="font-picker">
+          <legend>フォント</legend>
+          <div className="font-options">
+            {FONT_PRESETS.map((p) => (
+              <label
+                key={p.key}
+                className={`font-option${font === p.key ? " selected" : ""}`}
+                style={{ fontFamily: p.family }}
+              >
+                <input
+                  type="radio"
+                  name="font"
+                  value={p.key}
+                  checked={font === p.key}
+                  onChange={() => setFont(p.key)}
+                />
+                <span className="font-sample">{sample}</span>
+                <span className="font-label">{p.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </div>
 
       <div className="wizard-nav">
@@ -105,7 +134,7 @@ export function MetadataForm({
         <button
           type="button"
           className="primary-btn"
-          onClick={() => onApply({ title, subtitle, textPosition, mapPosition, showCoordinates, theme })}
+          onClick={() => onApply({ title, subtitle, textPosition, mapPosition, showCoordinates, theme, font })}
         >
           適用
         </button>
