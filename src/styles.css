@@ -81,10 +81,17 @@ h1 {
   min-height: 1.4em;
 }
 
-.download-btn {
+.wizard-nav {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  justify-content: flex-end;
+}
+
+.primary-btn,
+.secondary-btn {
   padding: 10px 28px;
-  background: #2563eb;
-  color: white;
   border: none;
   border-radius: 8px;
   font-size: 0.95rem;
@@ -93,13 +100,90 @@ h1 {
   transition: background 0.15s;
 }
 
-.download-btn:hover:not(:disabled) {
+.primary-btn {
+  background: #2563eb;
+  color: white;
+}
+
+.primary-btn:hover:not(:disabled) {
   background: #1d4ed8;
 }
 
-.download-btn:disabled {
+.primary-btn:disabled {
   background: #94a3b8;
   cursor: default;
+}
+
+.secondary-btn {
+  background: white;
+  color: #1e293b;
+  border: 1.5px solid #cbd5e1;
+}
+
+.secondary-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.step-indicator {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  max-width: 640px;
+  justify-content: center;
+}
+
+.step-indicator li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.step-indicator li:not(:last-child)::after {
+  content: "";
+  display: inline-block;
+  width: 48px;
+  height: 1.5px;
+  background: #cbd5e1;
+  margin-left: 8px;
+}
+
+.step-indicator .step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.step-indicator li.active {
+  color: #1e293b;
+}
+
+.step-indicator li.active .step-number {
+  background: #2563eb;
+  color: white;
+}
+
+.step-indicator li.done {
+  color: #16a34a;
+}
+
+.step-indicator li.done .step-number {
+  background: #16a34a;
+  color: white;
 }
 
 .canvas-wrapper {
