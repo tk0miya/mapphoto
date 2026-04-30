@@ -1,5 +1,5 @@
 import * as exifr from "exifr";
-import type { Feature } from "./types";
+import type { Corner, Feature } from "./types";
 
 type GeoJsonGeometry =
   | { type: "Polygon"; coordinates: number[][][] }
@@ -345,7 +345,28 @@ interface TextLine {
   bold?: boolean;
 }
 
-function drawTextOverlay(ctx: CanvasRenderingContext2D, title: string, subtitle: string, exif: ExifData, W: number) {
+function cornerOffset(
+  corner: Corner,
+  W: number,
+  H: number,
+  w: number,
+  h: number,
+  pad: number,
+): { x: number; y: number } {
+  const x = corner.endsWith("right") ? W - w - pad : pad;
+  const y = corner.startsWith("bottom") ? H - h - pad : pad;
+  return { x, y };
+}
+
+function drawTextOverlay(
+  ctx: CanvasRenderingContext2D,
+  title: string,
+  subtitle: string,
+  exif: ExifData,
+  W: number,
+  H: number,
+  position: Corner,
+) {
   const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
   const baseSize = Math.round(W * 0.022);
   const PAD = Math.round(baseSize * 0.8);
@@ -371,8 +392,7 @@ function drawTextOverlay(ctx: CanvasRenderingContext2D, title: string, subtitle:
   });
   const boxW = Math.max(...measured.map((l) => l.w)) + BOX_PAD * 2;
   const boxH = measured.reduce((s, l) => s + l.h, 0) + BOX_PAD * 2;
-  const boxX = PAD;
-  const boxY = PAD;
+  const { x: boxX, y: boxY } = cornerOffset(position, W, H, boxW, boxH, PAD);
 
   // 地図ボックスと同じ背景色・透明度
   ctx.fillStyle = "rgba(10,12,24,0.40)";
@@ -399,13 +419,21 @@ function drawTextOverlay(ctx: CanvasRenderingContext2D, title: string, subtitle:
   ctx.restore();
 }
 
+export interface RenderOptions {
+  title?: string;
+  subtitle?: string;
+  textPosition?: Corner;
+  mapPosition?: Corner;
+}
+
 export async function render(
   canvas: HTMLCanvasElement,
   imageFile: File,
   features: Feature[],
-  title = "",
-  subtitle = "",
+  options: RenderOptions = {},
 ): Promise<void> {
+  const { title = "", subtitle = "", textPosition = "top-left", mapPosition = "bottom-right" } = options;
+
   const [japan, photo, exif] = await Promise.all([loadJapan(), loadImage(imageFile), readExif(imageFile)]);
 
   // キャンバスサイズを写真に合わせる（最大幅 960px）
@@ -424,12 +452,11 @@ export async function render(
   ctx.drawImage(photo as CanvasImageSource, 0, 0, W, H);
   if ("close" in photo) photo.close();
 
-  // 地図エリア：右下 1/3 × 1/3 のコーナーインセット
+  // 地図エリア：1/3 × 1/3 のコーナーインセット
   const mapW = Math.round(W / 3);
   const mapH = Math.round(H / 3);
   const MAP_PAD = 16;
-  const mapX = W - mapW - MAP_PAD;
-  const mapY = H - mapH - MAP_PAD;
+  const { x: mapX, y: mapY } = cornerOffset(mapPosition, W, H, mapW, mapH, MAP_PAD);
 
   // 地図背景（角丸）
   const r = 12;
@@ -492,6 +519,6 @@ export async function render(
 
   ctx.restore();
 
-  // テキストオーバーレイ（左上）
-  drawTextOverlay(ctx, title, subtitle, exif, W);
+  // テキストオーバーレイ
+  drawTextOverlay(ctx, title, subtitle, exif, W, H, textPosition);
 }

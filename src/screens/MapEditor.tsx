@@ -5,6 +5,7 @@ import { parseMapSource } from "../kmz";
 import { loadStoredKmzUrl, saveKmzUrl } from "../kmzUrlStorage";
 import { fetchMapSource, parseMapsUrl } from "../mapsUrl";
 import { render } from "../renderer";
+import type { Corner } from "../types";
 import { MetadataForm } from "./MetadataForm";
 import { ResultView } from "./ResultView";
 import { UploadForm } from "./UploadForm";
@@ -20,6 +21,8 @@ export function MapEditor() {
   const [kmzUrl, setKmzUrl] = useState<string>(() => loadStoredKmzUrl(localStorage));
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
+  const [textPosition, setTextPosition] = useState<Corner>("top-left");
+  const [mapPosition, setMapPosition] = useState<Corner>("bottom-right");
   const [status, setStatus] = useState("");
   const [rendered, setRendered] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -63,7 +66,12 @@ export function MapEditor() {
         setStatus("描画中...");
         const canvas = canvasRef.current;
         if (!canvas) throw new Error("Canvas が初期化されていません");
-        await render(canvas, photoFile, features, title.trim(), subtitle.trim());
+        await render(canvas, photoFile, features, {
+          title: title.trim(),
+          subtitle: subtitle.trim(),
+          textPosition,
+          mapPosition,
+        });
         if (cancelled) return;
         setRendered(true);
         setStatus("");
@@ -78,7 +86,7 @@ export function MapEditor() {
     return () => {
       cancelled = true;
     };
-  }, [stepIndex, photoFile, kmzFile, kmzUrl, title, subtitle]);
+  }, [stepIndex, photoFile, kmzFile, kmzUrl, title, subtitle, textPosition, mapPosition]);
 
   const goToMetadata = () => {
     if (!photoFile) return;
@@ -144,8 +152,12 @@ export function MapEditor() {
         <MetadataForm
           title={title}
           subtitle={subtitle}
+          textPosition={textPosition}
+          mapPosition={mapPosition}
           onTitleChange={setTitle}
           onSubtitleChange={setSubtitle}
+          onTextPositionChange={setTextPosition}
+          onMapPositionChange={setMapPosition}
           onBack={goToUpload}
           onNext={goToOutput}
         />
