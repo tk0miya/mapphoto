@@ -28,6 +28,35 @@ h1 {
   gap: 16px;
   width: 100%;
   max-width: 640px;
+  align-items: stretch;
+}
+
+.map-source {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.url-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: #1e293b;
+  background: white;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.url-input:focus {
+  border-color: #2563eb;
+}
+
+.url-input::placeholder {
+  color: #94a3b8;
 }
 
 .drop-area {
