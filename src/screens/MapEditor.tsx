@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { StepIndicator } from "../components/StepIndicator";
 import { attachExifToPng } from "../exif";
 import { parseMapSource } from "../kmz";
+import { loadStoredKmzUrl, saveKmzUrl } from "../kmzUrlStorage";
 import { fetchMapSource, parseMapsUrl } from "../mapsUrl";
 import { render } from "../renderer";
 import { MetadataForm } from "./MetadataForm";
@@ -16,12 +17,22 @@ export function MapEditor() {
   const [stepIndex, setStepIndex] = useState(0);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [kmzFile, setKmzFile] = useState<File | null>(null);
-  const [kmzUrl, setKmzUrl] = useState("");
+  const [kmzUrl, setKmzUrl] = useState<string>(() => loadStoredKmzUrl(localStorage));
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [status, setStatus] = useState("");
   const [rendered, setRendered] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (kmzUrl === "") {
+      saveKmzUrl(localStorage, "");
+      return;
+    }
+    if (parseMapsUrl(kmzUrl)) {
+      saveKmzUrl(localStorage, kmzUrl);
+    }
+  }, [kmzUrl]);
 
   useEffect(() => {
     if (stepIndex !== 2 || !photoFile) return;
