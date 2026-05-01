@@ -64,8 +64,8 @@ export function MetadataForm({
   const sample = title.trim() || subtitle.trim() || "旅の記録 Travel Log";
 
   const handleThemeChange = (next: Theme) => {
-    if (mapOpacity === DEFAULT_BOX_OPACITY[theme].map) setMapOpacity(DEFAULT_BOX_OPACITY[next].map);
-    if (textOpacity === DEFAULT_BOX_OPACITY[theme].text) setTextOpacity(DEFAULT_BOX_OPACITY[next].text);
+    setMapOpacity(DEFAULT_BOX_OPACITY[next].map);
+    setTextOpacity(DEFAULT_BOX_OPACITY[next].text);
     setTheme(next);
   };
 
