@@ -72,83 +72,94 @@ export function MetadataForm({
   return (
     <>
       <div className="text-inputs">
-        <input type="text" placeholder="タイトル（省略可）" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <input
-          type="text"
-          placeholder="サブタイトル（省略可）"
-          value={subtitle}
-          onChange={(e) => setSubtitle(e.target.value)}
-        />
+        <fieldset className="settings-group">
+          <legend>情報表示</legend>
+          <input
+            type="text"
+            placeholder="タイトル（省略可）"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="サブタイトル（省略可）"
+            value={subtitle}
+            onChange={(e) => setSubtitle(e.target.value)}
+          />
 
-        <label className="form-row">
-          <span>テキスト情報表示位置</span>
-          <select value={textPosition} onChange={(e) => setTextPosition(e.target.value as Corner)}>
-            {CORNER_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className="form-row">
+            <span>テキスト情報表示位置</span>
+            <select value={textPosition} onChange={(e) => setTextPosition(e.target.value as Corner)}>
+              {CORNER_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label className="form-row">
-          <span>地図表示位置</span>
-          <select value={mapPosition} onChange={(e) => setMapPosition(e.target.value as Corner)}>
-            {CORNER_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className="form-row">
+            <span>地図表示位置</span>
+            <select value={mapPosition} onChange={(e) => setMapPosition(e.target.value as Corner)}>
+              {CORNER_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label className="form-row">
-          <span>座標を表示</span>
-          <input type="checkbox" checked={showCoordinates} onChange={(e) => setShowCoordinates(e.target.checked)} />
-        </label>
+          <label className="form-row">
+            <span>座標を表示</span>
+            <input type="checkbox" checked={showCoordinates} onChange={(e) => setShowCoordinates(e.target.checked)} />
+          </label>
+        </fieldset>
 
-        <label className="form-row">
-          <span>配色テーマ</span>
-          <select value={theme} onChange={(e) => handleThemeChange(e.target.value as Theme)}>
-            {THEME_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <fieldset className="settings-group">
+          <legend>見た目</legend>
+          <label className="form-row">
+            <span>配色テーマ</span>
+            <select value={theme} onChange={(e) => handleThemeChange(e.target.value as Theme)}>
+              {THEME_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label className="form-row">
-          <span>テキストボックスの不透明度</span>
-          <span className="range-control">
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={textOpacity}
-              onChange={(e) => setTextOpacity(Number(e.target.value))}
-            />
-            <span className="range-value">{textOpacity.toFixed(2)}</span>
-          </span>
-        </label>
+          <label className="form-row">
+            <span>テキストボックスの不透明度</span>
+            <span className="range-control">
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={textOpacity}
+                onChange={(e) => setTextOpacity(Number(e.target.value))}
+              />
+              <span className="range-value">{textOpacity.toFixed(2)}</span>
+            </span>
+          </label>
 
-        <label className="form-row">
-          <span>地図ボックスの不透明度</span>
-          <span className="range-control">
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={mapOpacity}
-              onChange={(e) => setMapOpacity(Number(e.target.value))}
-            />
-            <span className="range-value">{mapOpacity.toFixed(2)}</span>
-          </span>
-        </label>
+          <label className="form-row">
+            <span>地図ボックスの不透明度</span>
+            <span className="range-control">
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={mapOpacity}
+                onChange={(e) => setMapOpacity(Number(e.target.value))}
+              />
+              <span className="range-value">{mapOpacity.toFixed(2)}</span>
+            </span>
+          </label>
+        </fieldset>
 
-        <fieldset className="font-picker">
+        <fieldset className="settings-group">
           <legend>フォント</legend>
           <div className="font-options">
             {FONT_PRESETS.map((p) => (

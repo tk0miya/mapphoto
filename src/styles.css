@@ -279,15 +279,17 @@ h1 {
   text-align: right;
 }
 
-.font-picker {
+.settings-group {
   border: 1.5px solid #cbd5e1;
   border-radius: 8px;
   padding: 12px 14px 14px;
   background: white;
-  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.font-picker > legend {
+.settings-group > legend {
   padding: 0 6px;
   font-size: 0.85rem;
   color: #475569;
