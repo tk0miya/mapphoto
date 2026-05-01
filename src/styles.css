@@ -261,6 +261,24 @@ h1 {
   border-color: #2563eb;
 }
 
+.range-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-control input[type="range"] {
+  cursor: pointer;
+}
+
+.range-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: #475569;
+  min-width: 2.5em;
+  text-align: right;
+}
+
 .font-picker {
   border: 1.5px solid #cbd5e1;
   border-radius: 8px;
