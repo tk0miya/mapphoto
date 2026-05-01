@@ -39,10 +39,6 @@ h1 {
   align-items: stretch;
 }
 
-.inputs > .drop-area {
-  min-width: 0;
-}
-
 .map-source {
   flex: 1;
   min-width: 0;
@@ -121,6 +117,10 @@ h1 {
   color: #16a34a;
   font-weight: 600;
   word-break: break-all;
+}
+
+.inputs > .drop-area {
+  min-width: 0;
 }
 
 .status {
