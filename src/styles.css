@@ -10,11 +10,19 @@ body {
   font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   background: #f1f5f9;
   min-height: 100vh;
+  padding: 40px 16px;
+}
+
+body,
+#root {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 40px 16px;
   gap: 24px;
+}
+
+#root {
+  width: 100%;
 }
 
 h1 {
@@ -126,7 +134,7 @@ h1 {
   gap: 12px;
   width: 100%;
   max-width: 640px;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .primary-btn,
