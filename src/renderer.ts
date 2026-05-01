@@ -3,37 +3,39 @@ import { DEFAULT_FONT, ensureFontReady, type FontKey, getFontPreset } from "./fo
 import type { Corner, Feature, Theme } from "./types";
 
 interface ThemePalette {
-  mapBackground: string;
+  boxBackgroundRgb: string;
   prefectureStroke: string;
   routeStroke: string;
   markerFill: string;
   markerStroke: string;
-  textBackground: string;
   textFill: string;
   textShadow: string;
 }
 
 const THEMES: Record<Theme, ThemePalette> = {
   dark: {
-    mapBackground: "rgba(10,12,24,0.40)",
+    boxBackgroundRgb: "10,12,24",
     prefectureStroke: "rgba(255,255,255,0.35)",
     routeStroke: "#ff6b6b",
     markerFill: "#ff6b6b",
     markerStroke: "rgba(255,255,255,0.85)",
-    textBackground: "rgba(10,12,24,0.40)",
     textFill: "rgba(255,255,255,0.95)",
     textShadow: "rgba(0,0,0,0.85)",
   },
   light: {
-    mapBackground: "rgba(245,245,245,0.60)",
+    boxBackgroundRgb: "245,245,245",
     prefectureStroke: "rgba(60,60,60,0.55)",
     routeStroke: "#d63b3b",
     markerFill: "#d63b3b",
     markerStroke: "rgba(255,255,255,0.95)",
-    textBackground: "rgba(245,245,245,0.60)",
     textFill: "rgba(20,20,20,0.95)",
     textShadow: "rgba(0,0,0,0.45)",
   },
+};
+
+export const DEFAULT_BOX_OPACITY: Record<Theme, { map: number; text: number }> = {
+  dark: { map: 0.4, text: 0.4 },
+  light: { map: 0.6, text: 0.6 },
 };
 
 type GeoJsonGeometry =
@@ -281,6 +283,7 @@ function drawTextOverlay(
   showCoordinates: boolean,
   palette: ThemePalette,
   font: FontKey,
+  textOpacity: number,
 ) {
   const preset = getFontPreset(font);
   const baseSize = Math.round(W * 0.022);
@@ -311,8 +314,7 @@ function drawTextOverlay(
   const boxH = measured.reduce((s, l) => s + l.h, 0) + BOX_PAD * 2;
   const { x: boxX, y: boxY } = cornerOffset(position, W, H, boxW, boxH, PAD);
 
-  // 地図ボックスと同じ背景色・透明度
-  ctx.fillStyle = palette.textBackground;
+  ctx.fillStyle = `rgba(${palette.boxBackgroundRgb},${textOpacity})`;
   ctx.beginPath();
   if (typeof ctx.roundRect === "function") {
     ctx.roundRect(boxX, boxY, boxW, boxH, CORNER);
@@ -344,6 +346,8 @@ export interface RenderOptions {
   showCoordinates?: boolean;
   theme?: Theme;
   font?: FontKey;
+  mapOpacity?: number;
+  textOpacity?: number;
 }
 
 export async function render(
@@ -360,6 +364,8 @@ export async function render(
     showCoordinates = true,
     theme = "dark",
     font = DEFAULT_FONT,
+    mapOpacity = DEFAULT_BOX_OPACITY[theme].map,
+    textOpacity = DEFAULT_BOX_OPACITY[theme].text,
   } = options;
   const palette = THEMES[theme];
 
@@ -409,7 +415,7 @@ export async function render(
   ctx.roundRect(mapX, mapY, mapW, mapH, r);
   ctx.clip();
 
-  ctx.fillStyle = palette.mapBackground;
+  ctx.fillStyle = `rgba(${palette.boxBackgroundRgb},${mapOpacity})`;
   ctx.fillRect(mapX, mapY, mapW, mapH);
 
   // 都道府県境界
@@ -464,5 +470,5 @@ export async function render(
   ctx.restore();
 
   // テキストオーバーレイ
-  drawTextOverlay(ctx, title, subtitle, exif, W, H, textPosition, showCoordinates, palette, font);
+  drawTextOverlay(ctx, title, subtitle, exif, W, H, textPosition, showCoordinates, palette, font, textOpacity);
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FONT_PRESETS, type FontKey } from "../fonts";
+import { DEFAULT_BOX_OPACITY } from "../renderer";
 import type { Corner, Theme } from "../types";
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
   initialShowCoordinates: boolean;
   initialTheme: Theme;
   initialFont: FontKey;
+  initialMapOpacity: number;
+  initialTextOpacity: number;
   onCancel: () => void;
   onApply: (next: {
     title: string;
@@ -19,6 +22,8 @@ interface Props {
     showCoordinates: boolean;
     theme: Theme;
     font: FontKey;
+    mapOpacity: number;
+    textOpacity: number;
   }) => void;
 }
 
@@ -42,6 +47,8 @@ export function MetadataForm({
   initialShowCoordinates,
   initialTheme,
   initialFont,
+  initialMapOpacity,
+  initialTextOpacity,
   onCancel,
   onApply,
 }: Props) {
@@ -52,7 +59,15 @@ export function MetadataForm({
   const [showCoordinates, setShowCoordinates] = useState(initialShowCoordinates);
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [font, setFont] = useState<FontKey>(initialFont);
+  const [mapOpacity, setMapOpacity] = useState(initialMapOpacity);
+  const [textOpacity, setTextOpacity] = useState(initialTextOpacity);
   const sample = title.trim() || subtitle.trim() || "旅の記録 Travel Log";
+
+  const handleThemeChange = (next: Theme) => {
+    if (mapOpacity === DEFAULT_BOX_OPACITY[theme].map) setMapOpacity(DEFAULT_BOX_OPACITY[next].map);
+    if (textOpacity === DEFAULT_BOX_OPACITY[theme].text) setTextOpacity(DEFAULT_BOX_OPACITY[next].text);
+    setTheme(next);
+  };
 
   return (
     <>
@@ -94,13 +109,43 @@ export function MetadataForm({
 
         <label className="form-row">
           <span>配色テーマ</span>
-          <select value={theme} onChange={(e) => setTheme(e.target.value as Theme)}>
+          <select value={theme} onChange={(e) => handleThemeChange(e.target.value as Theme)}>
             {THEME_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
           </select>
+        </label>
+
+        <label className="form-row">
+          <span>テキストボックスの不透明度</span>
+          <span className="range-control">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={textOpacity}
+              onChange={(e) => setTextOpacity(Number(e.target.value))}
+            />
+            <span className="range-value">{textOpacity.toFixed(2)}</span>
+          </span>
+        </label>
+
+        <label className="form-row">
+          <span>地図ボックスの不透明度</span>
+          <span className="range-control">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={mapOpacity}
+              onChange={(e) => setMapOpacity(Number(e.target.value))}
+            />
+            <span className="range-value">{mapOpacity.toFixed(2)}</span>
+          </span>
         </label>
 
         <fieldset className="font-picker">
@@ -134,7 +179,19 @@ export function MetadataForm({
         <button
           type="button"
           className="primary-btn"
-          onClick={() => onApply({ title, subtitle, textPosition, mapPosition, showCoordinates, theme, font })}
+          onClick={() =>
+            onApply({
+              title,
+              subtitle,
+              textPosition,
+              mapPosition,
+              showCoordinates,
+              theme,
+              font,
+              mapOpacity,
+              textOpacity,
+            })
+          }
         >
           適用
         </button>

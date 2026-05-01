@@ -7,7 +7,7 @@ import { formatPlace, lookupPlace } from "../geocode";
 import { parseMapSource } from "../kmz";
 import { loadStoredKmzUrl, saveKmzUrl } from "../kmzUrlStorage";
 import { fetchMapSource, parseMapsUrl } from "../mapsUrl";
-import { render } from "../renderer";
+import { DEFAULT_BOX_OPACITY, render } from "../renderer";
 import type { Corner, Theme } from "../types";
 import { MetadataForm } from "./MetadataForm";
 import { ResultView } from "./ResultView";
@@ -31,6 +31,8 @@ export function MapEditor() {
   const [showCoordinates, setShowCoordinates] = useState(true);
   const [theme, setTheme] = useState<Theme>("dark");
   const [font, setFont] = useState<FontKey>(DEFAULT_FONT);
+  const [mapOpacity, setMapOpacity] = useState<number>(DEFAULT_BOX_OPACITY.dark.map);
+  const [textOpacity, setTextOpacity] = useState<number>(DEFAULT_BOX_OPACITY.dark.text);
   const [status, setStatus] = useState("");
   const [rendered, setRendered] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -103,6 +105,8 @@ export function MapEditor() {
           showCoordinates,
           theme,
           font,
+          mapOpacity,
+          textOpacity,
         });
         if (cancelled) return;
         setRendered(true);
@@ -130,6 +134,8 @@ export function MapEditor() {
     showCoordinates,
     theme,
     font,
+    mapOpacity,
+    textOpacity,
   ]);
 
   const generate = () => {
@@ -153,6 +159,8 @@ export function MapEditor() {
     setShowCoordinates(true);
     setTheme("dark");
     setFont(DEFAULT_FONT);
+    setMapOpacity(DEFAULT_BOX_OPACITY.dark.map);
+    setTextOpacity(DEFAULT_BOX_OPACITY.dark.text);
     setScreen("upload");
   };
 
@@ -172,6 +180,8 @@ export function MapEditor() {
     showCoordinates: boolean;
     theme: Theme;
     font: FontKey;
+    mapOpacity: number;
+    textOpacity: number;
   }) => {
     setTitle(next.title);
     setSubtitle(next.subtitle);
@@ -180,6 +190,8 @@ export function MapEditor() {
     setShowCoordinates(next.showCoordinates);
     setTheme(next.theme);
     setFont(next.font);
+    setMapOpacity(next.mapOpacity);
+    setTextOpacity(next.textOpacity);
     setScreen("output");
   };
 
@@ -247,6 +259,8 @@ export function MapEditor() {
           initialShowCoordinates={showCoordinates}
           initialTheme={theme}
           initialFont={font}
+          initialMapOpacity={mapOpacity}
+          initialTextOpacity={textOpacity}
           onCancel={closeSettings}
           onApply={applySettings}
         />
