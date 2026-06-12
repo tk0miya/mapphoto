@@ -15,6 +15,15 @@ updates:
       timezone: "Asia/Tokyo"
     cooldown:
       default-days: 3
+    groups:
+      # Keep react and react-dom (and their type defs) in lockstep.
+      # They must share the exact same version or React throws error #527.
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
     ignore:
       # Ignore non-LTS Node.js versions (odd numbers are not LTS)
       - dependency-name: "@types/node"
