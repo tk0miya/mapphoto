@@ -7,6 +7,7 @@ import { formatPlace, lookupPlace } from "../geocode";
 import { parseMapSource } from "../kmz";
 import { loadStoredKmzUrl, saveKmzUrl } from "../kmzUrlStorage";
 import { fetchMapSource, parseMapsUrl } from "../mapsUrl";
+import { resolvePhotoFile } from "../photoZip";
 import { DEFAULT_BOX_OPACITY, render } from "../renderer";
 import type { Corner, Theme } from "../types";
 import { MetadataForm } from "./MetadataForm";
@@ -34,6 +35,7 @@ export function MapEditor() {
   const [mapOpacity, setMapOpacity] = useState<number>(DEFAULT_BOX_OPACITY.dark.map);
   const [textOpacity, setTextOpacity] = useState<number>(DEFAULT_BOX_OPACITY.dark.text);
   const [status, setStatus] = useState("");
+  const [photoError, setPhotoError] = useState("");
   const [rendered, setRendered] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -138,6 +140,17 @@ export function MapEditor() {
     textOpacity,
   ]);
 
+  // 写真を受け取る。Google フォトの zip ならば中の画像 1 枚に解決してから保持する。
+  const handlePhotoChange = async (file: File) => {
+    setPhotoError("");
+    try {
+      setPhotoFile(await resolvePhotoFile(file));
+    } catch (e) {
+      setPhotoFile(null);
+      setPhotoError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   const generate = () => {
     if (!photoFile) return;
     if (!kmzFile && !parseMapsUrl(kmzUrl)) return;
@@ -150,6 +163,7 @@ export function MapEditor() {
     setRendered(false);
     setLoading(false);
     setStatus("");
+    setPhotoError("");
     setPhotoFile(null);
     setKmzFile(null);
     setTitle("");
@@ -227,9 +241,10 @@ export function MapEditor() {
       {screen === "upload" && (
         <UploadForm
           photoFile={photoFile}
+          photoError={photoError}
           kmzFile={kmzFile}
           kmzUrl={kmzUrl}
-          onPhotoChange={setPhotoFile}
+          onPhotoChange={handlePhotoChange}
           onKmzChange={setKmzFile}
           onKmzUrlChange={setKmzUrl}
           onGenerate={generate}
