@@ -39,6 +39,7 @@ h1 {
   align-items: stretch;
 }
 
+.photo-source,
 .map-source {
   flex: 1;
   min-width: 0;
@@ -119,8 +120,10 @@ h1 {
   word-break: break-all;
 }
 
-.inputs > .drop-area {
-  min-width: 0;
+.upload-error {
+  font-size: 0.8rem;
+  color: #dc2626;
+  margin: 0;
 }
 
 .status {

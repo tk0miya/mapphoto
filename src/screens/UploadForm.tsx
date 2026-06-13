@@ -3,6 +3,7 @@ import { isProxyConfigured, parseMapsUrl } from "../mapsUrl";
 
 interface Props {
   photoFile: File | null;
+  photoError: string;
   kmzFile: File | null;
   kmzUrl: string;
   onPhotoChange: (file: File) => void;
@@ -13,6 +14,7 @@ interface Props {
 
 export function UploadForm({
   photoFile,
+  photoError,
   kmzFile,
   kmzUrl,
   onPhotoChange,
@@ -28,19 +30,22 @@ export function UploadForm({
   return (
     <>
       <div className="inputs">
-        <DropArea
-          icon="📷"
-          label={
-            <>
-              写真をドロップ
-              <br />
-              またはクリックして選択
-            </>
-          }
-          accept="image/*"
-          fileName={photoFile?.name ?? null}
-          onFile={onPhotoChange}
-        />
+        <div className="photo-source">
+          <DropArea
+            icon="📷"
+            label={
+              <>
+                写真（zip も可）をドロップ
+                <br />
+                またはクリックして選択
+              </>
+            }
+            accept="image/*,.zip,application/zip"
+            fileName={photoFile?.name ?? null}
+            onFile={onPhotoChange}
+          />
+          {photoError && <p className="upload-error">{photoError}</p>}
+        </div>
         <div className="map-source">
           <DropArea
             icon="🗺️"
