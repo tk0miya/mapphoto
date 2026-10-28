@@ -19,8 +19,8 @@
     "libheif-js": "^1.23.5",
     "png-chunks-encode": "^1.0.0",
     "png-chunks-extract": "^1.0.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
